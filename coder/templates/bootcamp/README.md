@@ -1,19 +1,10 @@
-> **⚠️ WORK IN PROGRESS**
+# **⚠️ WORK IN PROGRESS**
 
----
-display_name: Bootcamp GCP Container
-description: Provision Google Compute Engine instances with container as Coder workspaces for Vector Bootcamps
-icon: ../../../site/static/icon/gcp.png
-maintainer_github: aieng
-verified: true
-tags: [vm-container, linux, gcp]
----
+## Remote Development on Google Compute Engine (VM Container)
 
-# Remote Development on Google Compute Engine (VM Container)
+### Prerequisites
 
-## Prerequisites
-
-### Authentication
+#### Authentication
 
 This template assumes that coderd is run in an environment that is authenticated
 with Google Cloud. For example, run `gcloud auth application-default login` to
@@ -47,7 +38,7 @@ a service account:
 1. Generate a **JSON private key**, which will be what you provide to Coder
    during the setup process.
 
-## Architecture
+### Architecture
 
 This template provisions the following resources:
 
@@ -60,7 +51,7 @@ This means, when the workspace restarts, any tools or files outside of the home 
 > **Note**
 > This template is designed to be a starting point! Edit the Terraform to extend the template to support your use case.
 
-## code-server
+### code-server
 
 `code-server` is installed via the `startup_script` argument in the `coder_agent`
 resource block. The `coder_app` resource is defined to access `code-server` through
