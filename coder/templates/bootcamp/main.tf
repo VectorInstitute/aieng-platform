@@ -93,8 +93,10 @@ resource "coder_agent" "main" {
 
     echo "Running project init script"
 
-    if [ ! -f ".coder/init.sh" ] ; then
-      sh coder/init.sh
+    if [ -f ".coder/init.sh" ] ; then
+      sh .coder/init.sh
+    else
+      echo "No init script"
     fi
 
     echo "Startup script ran successfully!"
