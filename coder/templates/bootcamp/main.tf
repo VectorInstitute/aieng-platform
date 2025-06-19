@@ -11,38 +11,9 @@ terraform {
 
 provider "coder" {}
 
-data "coder_parameter" "gcp_project_id" {
-  name      = "Google Compute Project ID"
-  type      = "string"
-  mutable   = false
-  default   = ""
-}
-
-data "coder_parameter" "github_repo" {
-  name      = "GitHub repository to clone"
-  type      = "string"
-  mutable   = false
-  default   = ""
-}
-
-data "coder_parameter" "github_branch" {
-  name      = "GitHub repository branch to checkout"
-  type      = "string"
-  mutable   = false
-  default   = "main"
-}
-
-# https://registry.coder.com/modules/coder/gcp-region/coder
-module "gcp_region" {
-  source = "registry.coder.com/coder/gcp-region/coder"
-  # This ensures that the latest non-breaking version of the module gets downloaded, you can also pin the module version to prevent breaking changes in production.
-  version = "~> 1.0"
-  regions = ["us", "europe"]
-}
-
 provider "google" {
-  zone    = module.gcp_region.value
-  project = data.coder_parameter.gcp_project_id.value
+  zone    = var.zone
+  project = var.project
 }
 
 data "google_compute_default_service_account" "default" {}
@@ -54,9 +25,7 @@ data "coder_workspace_owner" "me" {}
 locals {
   # Ensure Coder username is a valid Linux username
   username = "coder"
-  github_repo = data.coder_parameter.github_repo.value
-  github_branch = data.coder_parameter.github_branch.value
-  repo_name = replace(regex(".*/(.*)", data.coder_parameter.github_repo.value)[0], ".git", "")
+  repo_name = replace(regex(".*/(.*)", var.github_repo)[0], ".git", "")
 }
 
 resource "coder_agent" "main" {
@@ -84,17 +53,18 @@ resource "coder_agent" "main" {
     cd "/home/${local.username}"
 
     if [ ! -d "${local.repo_name}" ] ; then
-      git clone ${local.github_repo}
+      git clone ${var.github_repo}
     fi
 
+    sudo chmod -R 777 ${local.repo_name}
     cd ${local.repo_name}
 
-    git checkout ${local.github_branch}
+    git checkout ${var.github_branch}
 
     echo "Running project init script"
 
     if [ -f ".coder/init.sh" ] ; then
-      sh .coder/init.sh
+      bash .coder/init.sh
     else
       echo "No init script"
     fi
@@ -109,6 +79,8 @@ resource "coder_agent" "main" {
     GIT_COMMITTER_NAME  = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
     GIT_COMMITTER_EMAIL = "${data.coder_workspace_owner.me.email}"
   }
+
+
 }
 
 # See https://registry.terraform.io/modules/terraform-google-modules/container-vm
@@ -159,18 +131,18 @@ module "gce-container" {
 }
 
 resource "google_compute_disk" "pd" {
-  project = data.coder_parameter.gcp_project_id.value
+  project = var.project
   name  = "coder-${data.coder_workspace.me.id}-data-disk"
   type  = "pd-ssd"
-  zone  = module.gcp_region.value
+  zone  = var.zone
   size    = 10
 }
 
 resource "google_compute_instance" "dev" {
-  zone         = module.gcp_region.value
+  zone         = var.zone
   count        = data.coder_workspace.me.start_count
   name         = "coder-${lower(data.coder_workspace_owner.me.name)}-${lower(data.coder_workspace.me.name)}"
-  machine_type = "e2-medium"
+  machine_type = var.machine_type
   network_interface {
     network = "default"
     access_config {
@@ -216,6 +188,7 @@ resource "coder_metadata" "workspace_info" {
 }
 
 resource "coder_app" "jupyter" {
+  count        = tobool(var.jupyterlab) ? 1 : 0
   agent_id     = coder_agent.main.id
   slug         = "jupyter"
   display_name = "JupyterLab"
@@ -232,6 +205,7 @@ resource "coder_app" "jupyter" {
 }
 
 resource "coder_app" "code-server" {
+  count        = tobool(var.codeserver) ? 1 : 0
   agent_id     = coder_agent.main.id
   slug         = "code-server"
   display_name = "code-server"
@@ -248,6 +222,7 @@ resource "coder_app" "code-server" {
 }
 
 resource "coder_app" "streamlit-app" {
+  count        = tobool(var.streamlit) ? 1 : 0
   agent_id     = coder_agent.main.id
   slug         = "streamlit-app"
   display_name = "Search and Chat"

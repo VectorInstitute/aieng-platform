@@ -1,0 +1,9 @@
+project = "my-gcp-project" # This must match your GCP project id
+region = "us-central1"
+zone = "us-central1-a"
+machine_type = "e2-medium"
+github_repo = "github_repo_url"
+github_branch = "main"
+jupyterlab = true
+codeserver = true
+streamlit = true

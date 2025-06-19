@@ -20,7 +20,13 @@ Example:
     cd bootcamp
     ```
 
-4. **Upload the Template**  
+4. **Copy Terraform variables example file and update the values**
+
+    ```sh
+    cp terraform.tfvars.example terraform.tfvars 
+    ```
+
+5. **Upload the Template**  
     ```sh
     coder templates push
     ```
