@@ -135,7 +135,7 @@ resource "google_compute_disk" "pd" {
   name  = "coder-${data.coder_workspace.me.id}-data-disk"
   type  = "pd-ssd"
   zone  = var.zone
-  size    = 10
+  size    = var.pd_size
 }
 
 resource "google_compute_instance" "dev" {

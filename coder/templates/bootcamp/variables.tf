@@ -14,6 +14,10 @@ variable "machine_type" {
     type = string
 }
 
+variable "pd_size" {
+    type = number
+}
+
 variable "jupyterlab" {
     type = string
     default = "false"
