@@ -5,6 +5,7 @@ machine_type = "e2-medium"
 pd_size = 10
 github_repo = "github_repo_url"
 github_branch = "main"
+container_image = "docker_image:tag"
 jupyterlab = true
 codeserver = true
 streamlit = true

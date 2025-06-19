@@ -89,7 +89,7 @@ module "gce-container" {
   version = "3.0.0"
 
   container = {
-    image   = "us-central1-docker.pkg.dev/axial-iris-462715-e6/vbootcamp/bootcamp-image:test"
+    image   = var.container_image
     command = ["sh"]
     args    = ["-c", coder_agent.main.init_script]
     securityContext = {

@@ -6,6 +6,7 @@ RUN apt-get update \
     sudo \
     curl \
     git \
+    jq \
     tar \
     unzip \
     ca-certificates \

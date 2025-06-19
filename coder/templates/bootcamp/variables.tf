@@ -40,3 +40,7 @@ variable github_repo {
 variable github_branch {
     type = string
 }
+
+variable container_image {
+    type = string
+}
