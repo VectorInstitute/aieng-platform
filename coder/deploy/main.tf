@@ -55,32 +55,6 @@ resource "google_compute_instance" "server" {
 
     metadata_startup_script = file(var.script_path)
 
-    metadata = {
-        ssh-keys = "${var.user}:${file(var.public_key_path)}"
-    }
-
-    provisioner "file" {
-        source      = "users.csv"
-        destination = "/tmp/users.csv"
-        connection {
-            type        = "ssh"
-            user        = var.user
-            private_key = file("~/.ssh/id_rsa")
-            host        = self.network_interface[0].access_config[0].nat_ip
-        }
-    }
-
-    provisioner "file" {
-        source      = "coder_setup.py"
-        destination = "/tmp/coder_setup.py"
-        connection {
-            type        = "ssh"
-            user        = var.user
-            private_key = file("~/.ssh/id_rsa")
-            host        = self.network_interface[0].access_config[0].nat_ip
-        }
-    }
-
     depends_on = [ google_project_service.cloud_resource_manager_api, google_project_service.compute_api ]
 }
 
