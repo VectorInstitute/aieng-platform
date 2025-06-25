@@ -38,6 +38,11 @@ a service account:
 1. Generate a **JSON private key**, which will be what you provide to Coder
    during the setup process.
 
+#### External Authentication - GitHub
+1. Create a GitHub App and complete the coderd environment setup by following the steps mentioned [here](https://coder.com/docs/admin/external-auth#github).
+
+1. Use the value set for `CODER_EXTERNAL_AUTH_0_ID` environment variable as the value for the terraform variable `github_app_id` in `terraform.tfvars` file.
+
 ### Architecture
 
 This template provisions the following resources:
