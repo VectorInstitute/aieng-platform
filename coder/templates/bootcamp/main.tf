@@ -21,6 +21,9 @@ data "google_compute_default_service_account" "default" {}
 data "coder_provisioner" "me" {}
 data "coder_workspace" "me" {}
 data "coder_workspace_owner" "me" {}
+data "coder_external_auth" "github" {
+   id = var.github_app_id
+}
 
 locals {
   # Ensure Coder username is a valid Linux username
@@ -72,15 +75,14 @@ resource "coder_agent" "main" {
     echo "Startup script ran successfully!"
 
   EOT
+}
 
-  env = {
-    GIT_AUTHOR_NAME     = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
-    GIT_AUTHOR_EMAIL    = "${data.coder_workspace_owner.me.email}"
-    GIT_COMMITTER_NAME  = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
-    GIT_COMMITTER_EMAIL = "${data.coder_workspace_owner.me.email}"
-  }
-
-
+module "github-upload-public-key" {
+  count            = data.coder_workspace.me.start_count
+  source           = "registry.coder.com/coder/github-upload-public-key/coder"
+  version          = "1.0.15"
+  agent_id         = coder_agent.main.id
+  external_auth_id = data.coder_external_auth.github.id
 }
 
 # See https://registry.terraform.io/modules/terraform-google-modules/container-vm

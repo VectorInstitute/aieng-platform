@@ -41,6 +41,10 @@ variable github_branch {
     type = string
 }
 
+variable github_app_id {
+    type = string
+}
+
 variable container_image {
     type = string
 }
