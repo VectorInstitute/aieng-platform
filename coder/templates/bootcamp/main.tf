@@ -44,30 +44,21 @@ resource "coder_agent" "main" {
     echo "Changing permissions of /home/${local.username} folder"
     sudo chown -R ${local.username}:${local.username} /home/${local.username}
 
-    echo "Installing Code Server"
-
-    # install and start code-server
-    sudo curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
-    /tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
-
-    echo "Cloning git repository and checking out the dev branch"
-
     # Clone the GitHub repository
     cd "/home/${local.username}"
 
     if [ ! -d "${local.repo_name}" ] ; then
       git clone ${var.github_repo}
+      cd ${local.repo_name}
+      git checkout ${var.github_branch}
+    else
+      cd ${local.repo_name}
     fi
 
-    sudo chmod -R 777 ${local.repo_name}
-    cd ${local.repo_name}
+    echo "Running project startup script"
 
-    git checkout ${var.github_branch}
-
-    echo "Running project init script"
-
-    if [ -f ".coder/init.sh" ] ; then
-      bash .coder/init.sh
+    if [ -f "scripts/start.sh" ] ; then
+      bash scripts/start.sh
     else
       echo "No init script"
     fi
@@ -75,6 +66,29 @@ resource "coder_agent" "main" {
     echo "Startup script ran successfully!"
 
   EOT
+
+  env = {
+			GIT_AUTHOR_NAME     = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
+			GIT_AUTHOR_EMAIL    = "${data.coder_workspace_owner.me.email}"
+			GIT_COMMITTER_NAME  = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
+			GIT_COMMITTER_EMAIL = "${data.coder_workspace_owner.me.email}"
+	}
+
+	metadata {
+			display_name = "CPU Usage"
+			key          = "0_cpu_usage"
+			script       = "coder stat cpu"
+			interval     = 10
+			timeout      = 1
+	}
+
+	metadata {
+			display_name = "RAM Usage"
+			key          = "1_ram_usage"
+			script       = "coder stat mem"
+			interval     = 10
+			timeout      = 1
+	}
 }
 
 module "github-upload-public-key" {
@@ -206,21 +220,15 @@ resource "coder_app" "jupyter" {
   }
 }
 
-resource "coder_app" "code-server" {
-  count        = tobool(var.codeserver) ? 1 : 0
-  agent_id     = coder_agent.main.id
-  slug         = "code-server"
-  display_name = "code-server"
-  url          = "http://localhost:13337/?folder=/home/${local.username}/${local.repo_name}"
-  icon         = "/icon/code.svg"
-  subdomain    = false
-  share        = "owner"
-
-  healthcheck {
-    url       = "http://localhost:13337/healthz"
-    interval  = 5
-    threshold = 6
-  }
+module "vscode-web" {
+  count          = tobool(var.codeserver) ? data.coder_workspace.me.start_count : 0
+  source         = "registry.coder.com/coder/vscode-web/coder"
+  version        = "1.3.0"
+  agent_id       = coder_agent.main.id
+  extensions     = ["ms-python.python", "ms-python.vscode-pylance"]
+  install_prefix = "/tmp/.vscode-web"
+  folder         = "/home/coder/${local.repo_name}"
+  accept_license = true
 }
 
 resource "coder_app" "streamlit-app" {
