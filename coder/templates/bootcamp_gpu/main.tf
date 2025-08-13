@@ -21,6 +21,8 @@ data "google_compute_default_service_account" "default" {}
 data "coder_provisioner" "me" {}
 data "coder_workspace" "me" {}
 data "coder_workspace_owner" "me" {}
+
+
 data "coder_external_auth" "github" {
    id = var.github_app_id
 }
@@ -40,7 +42,7 @@ resource "coder_agent" "main" {
     set -e
 
     export PATH="/home/${local.username}/.local/bin:$PATH"
-
+    
     echo "Changing permissions of /home/${local.username} folder"
     sudo chown -R ${local.username}:${local.username} /home/${local.username}
 
@@ -100,6 +102,7 @@ module "github-upload-public-key" {
 }
 
 # See https://registry.terraform.io/modules/terraform-google-modules/container-vm
+# Updated container module configuration for GPU access
 module "gce-container" {
   source  = "terraform-google-modules/container-vm/google"
   version = "3.0.0"
@@ -111,8 +114,26 @@ module "gce-container" {
     securityContext = {
       privileged : true
     }
+    # GPU-related environment variables
+    env = [
+      {
+        name  = "PATH"
+        value = "/usr/local/nvidia/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$HOME/.local/bin"
+      },
+      {
+        name  = "LD_LIBRARY_PATH"
+        value = "/usr/local/nvidia/lib64:/usr/local/cuda/lib64"
+      },
+      {
+        name  = "NVIDIA_VISIBLE_DEVICES"
+        value = "all"
+      },
+      {
+        name  = "NVIDIA_DRIVER_CAPABILITIES" 
+        value = "all"
+      }
+    ]
     # Declare volumes to be mounted
-    # This is similar to how Docker volumes are mounted
     volumeMounts = [
       {
         mountPath = "/cache"
@@ -124,33 +145,55 @@ module "gce-container" {
         name      = "data-disk-0"
         readOnly  = false
       },
+      # GPU driver volumes
+      {
+        mountPath = "/usr/local/nvidia/lib64"
+        name      = "nvidia-lib64"
+        readOnly  = true
+      },
+      {
+        mountPath = "/usr/local/nvidia/bin"
+        name      = "nvidia-bin"
+        readOnly  = true
+      }
     ]
   }
+  
   # Declare the volumes
   volumes = [
     {
       name = "tempfs-0"
-
       emptyDir = {
         medium = "Memory"
       }
     },
     {
       name = "data-disk-0"
-
       gcePersistentDisk = {
         pdName = "data-disk-0"
         fsType = "ext4"
       }
     },
+    {
+      name = "nvidia-lib64"
+      hostPath = {
+        path = "/var/lib/nvidia/lib64"
+      }
+    },
+    {
+      name = "nvidia-bin"
+      hostPath = {
+        path = "/var/lib/nvidia/bin"
+      }
+    }
   ]
 }
 
 resource "google_compute_disk" "pd" {
   project = var.project
-  name  = "coder-${data.coder_workspace.me.id}-data-disk"
-  type  = "pd-ssd"
-  zone  = var.zone
+  name    = "coder-${data.coder_workspace.me.id}-data-disk"
+  type    = "pd-ssd"
+  zone    = var.zone
   size    = var.pd_size
 }
 
@@ -158,33 +201,74 @@ resource "google_compute_instance" "dev" {
   zone         = var.zone
   count        = data.coder_workspace.me.start_count
   name         = "coder-${lower(data.coder_workspace_owner.me.name)}-${lower(data.coder_workspace.me.name)}"
-  machine_type = var.machine_type
+  
+  # Use N1 machine type for T4 GPU compatibility
+  machine_type = var.machine_type # Should be n1-standard-* for T4 GPUs
+  
+  # GPU configuration for T4
+  guest_accelerator {
+    type  = var.guest_accelerator_type
+    count = 1
+  }
+  
+  # Required for GPU instances
+  scheduling {
+    on_host_maintenance = "TERMINATE"
+  }
+  
   network_interface {
     network = "default"
     access_config {
       // Ephemeral public IP
     }
   }
+  
   boot_disk {
     initialize_params {
-      image = module.gce-container.source_image
+      # Use Container-Optimized OS with GPU support (milestone 85+)
+      image = "cos-cloud/cos-stable"
+      size  = 50 # Increased size for GPU drivers
     }
   }
+  
   attached_disk {
     source      = google_compute_disk.pd.self_link
     device_name = "data-disk-0"
     mode        = "READ_WRITE"
   }
+  
   service_account {
-    email  = data.google_compute_default_service_account.default.email
-    scopes = ["cloud-platform"]
+    email = data.google_compute_default_service_account.default.email
+    scopes = [
+      "https://www.googleapis.com/auth/cloud-platform",
+      "https://www.googleapis.com/auth/devstorage.read_only" # Required for cos-extensions
+    ]
   }
+  
   metadata = {
     "gce-container-declaration" = module.gce-container.metadata_value
+    # Add startup script to install GPU drivers
+    "startup-script" = <<-EOF
+      #!/bin/bash
+      # Install GPU drivers
+      sudo cos-extensions install gpu
+      
+      # Make drivers executable (required for COS)
+      sudo mount --bind /var/lib/nvidia /var/lib/nvidia
+      sudo mount -o remount,exec /var/lib/nvidia
+      
+      # Restart docker to pick up GPU runtime
+      sudo systemctl restart docker
+    EOF
   }
+  
   labels = {
     container-vm = module.gce-container.vm_container_label
+    gpu-type     = "nvidia-tesla-t4"
   }
+  
+  # Add network tags if you need specific firewall rules
+  tags = ["gpu-instance", "coder-workspace"]
 }
 
 resource "coder_agent_instance" "dev" {
