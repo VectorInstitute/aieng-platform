@@ -1,0 +1,52 @@
+name: Deploy Coder to GCP
+
+on:
+  workflow_dispatch:
+
+env:
+  GH_APP_ID: ${{ vars.GH_APP_ID }}
+  GH_APP_CLIENT_ID: ${{ secrets.GH_APP_CLIENT_ID }}
+  GH_APP_CLIENT_SECRET: ${{ secrets.GH_APP_CLIENT_SECRET }}
+  TF_DIR: coder/deploy
+  TF_VAR_project: ${{ vars.GCP_PROJECT_ID }}
+  TF_VAR_script_path: startup.sh
+  TF_VAR_region:  ${{ vars.GCP_REGION }}
+  TF_VAR_zone: ${{ vars.GCP_ZONE }}
+  TF_VAR_machine_type: ${{ vars.GCP_MACHINE_TYPE }}
+  TF_VAR_service_account_email: ${{ vars.GCP_SERVICE_ACCOUNT }}
+  TF_VAR_vm_name: coder-entrypoint
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate with GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform plan
+
+      # - name: Terraform Apply
+      #   working-directory: ${{ env.TF_DIR }}
+      #   run: terraform apply -auto-approve

@@ -31,6 +31,6 @@ variable "service_account_email" {
     type = string
 }
 
-variable "vm_names" {
-    type = list(string)
+variable "vm_name" {
+    type = string
 }

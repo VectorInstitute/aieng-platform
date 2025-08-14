@@ -23,14 +23,9 @@ resource "google_project_service" "compute_api" {
     disable_on_destroy = false
 }
 
-# Create the compute instances
+# Create the compute instance
 resource "google_compute_instance" "server" {
-
-    # Set up multiple instances with different variable values
-    for_each    = toset(var.vm_names)
-    name         = each.value
-
-    # Many of our instances use the same values (ie. project, zone)
+    name         = var.vm_name
     project      = var.project
     machine_type = var.machine_type
     zone         = var.zone
