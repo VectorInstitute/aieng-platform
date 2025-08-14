@@ -17,7 +17,7 @@ env:
   TF_VAR_vm_name: coder-entrypoint
 
 jobs:
-  deploy:
+  terraform-plan:
     runs-on: ubuntu-latest
 
     steps:
@@ -37,7 +37,7 @@ jobs:
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.9.8
+          terraform_version: 1.12.2
 
       - name: Terraform Init
         working-directory: ${{ env.TF_DIR }}
@@ -45,8 +45,42 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_DIR }}
-        run: terraform plan
+        run: terraform plan -out=tfplan
 
-      # - name: Terraform Apply
-      #   working-directory: ${{ env.TF_DIR }}
-      #   run: terraform apply -auto-approve
+      - name: Upload plan for next job
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan
+          path: ${{ env.TF_DIR }}/tfplan
+
+  terraform-apply:
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    environment: coder-deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download plan
+        uses: actions/download-artifact@v3
+        with:
+          name: tfplan
+          path: ${{ env.TF_DIR }}
+
+      - name: Authenticate with GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.2
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform apply -auto-approve tfplan
