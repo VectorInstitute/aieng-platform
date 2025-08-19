@@ -31,10 +31,10 @@ journalctl -u coder.service -b
 mkdir -p /etc/systemd/system/coder.service.d
 echo -e "[Service]\n\
 Environment=CODER_OAUTH2_GITHUB_ALLOW_SIGNUPS=true\n\
-Environment=CODER_EXTERNAL_AUTH_0_ID=$GH_APP_ID\n\
+Environment=CODER_EXTERNAL_AUTH_0_ID=<GH_APP_ID>\n\
 Environment=CODER_EXTERNAL_AUTH_0_TYPE=github\n\
-Environment=CODER_EXTERNAL_AUTH_0_CLIENT_ID=$GH_APP_CLIENT_ID\n\
-Environment=CODER_EXTERNAL_AUTH_0_CLIENT_SECRET=$GH_APP_CLIENT_SECRET\n\
+Environment=CODER_EXTERNAL_AUTH_0_CLIENT_ID=<GH_APP_CLIENT_ID>\n\
+Environment=CODER_EXTERNAL_AUTH_0_CLIENT_SECRET=<GH_APP_CLIENT_SECRET>\n\
 Environment=CODER_EXTERNAL_AUTH_0_SCOPES=repo,workflow,admin:public_key\n\
 Environment=CODER_LOG_LEVEL=debug" > /etc/systemd/system/coder.service.d/override.conf
 

@@ -40,13 +40,14 @@ jobs:
       - name: Terraform Init
         working-directory: ${{ env.TF_DIR }}
         run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+      
+      - name: Replace env variables in startup script
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          sed -i '' -e "s|<GH_APP_ID>|${{ vars.GH_APP_ID }}|g" -e "s|<GH_APP_CLIENT_ID>|${{ secrets.GH_APP_CLIENT_ID }}|g" -e "s|<GH_APP_CLIENT_SECRET>|${{ secrets.GH_APP_CLIENT_SECRET }}|g" ${{ env.TF_VAR_script_path }};
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_DIR }}
-        env:
-          GH_APP_ID: ${{ vars.GH_APP_ID }}
-          GH_APP_CLIENT_ID: ${{ secrets.GH_APP_CLIENT_ID }}
-          GH_APP_CLIENT_SECRET: ${{ secrets.GH_APP_CLIENT_SECRET }}
         run: terraform plan -input=false -out=tfplan
 
       - name: Upload Plan Artifacts
