@@ -26,7 +26,3 @@ variable "service_account_email" {
 variable "vm_name" {
     type = string
 }
-
-variable "tf_state_bucket" {
-    type = string
-}

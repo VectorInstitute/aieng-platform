@@ -10,7 +10,7 @@ env:
   TF_DIR: coder/deploy
   TF_VAR_project: ${{ vars.GCP_PROJECT_ID }}
   TF_VAR_script_path: startup.sh
-  TF_VAR_region:  ${{ vars.GCP_REGION }}
+  TF_VAR_region: ${{ vars.GCP_REGION }}
   TF_VAR_zone: ${{ vars.GCP_ZONE }}
   TF_VAR_machine_type: ${{ vars.GCP_MACHINE_TYPE }}
   TF_VAR_service_account_email: ${{ vars.GCP_SERVICE_ACCOUNT }}
@@ -42,7 +42,7 @@ jobs:
 
       - name: Terraform Init
         working-directory: ${{ env.TF_DIR }}
-        run: terraform init
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_DIR }}
@@ -74,7 +74,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-      
+
       - name: Set up gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
         with:
