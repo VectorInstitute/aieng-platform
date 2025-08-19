@@ -19,7 +19,8 @@ env:
 jobs:
   terraform-plan:
     runs-on: ubuntu-latest
-
+    outputs:
+      plan-artifact: tf-artifacts
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -47,11 +48,14 @@ jobs:
         working-directory: ${{ env.TF_DIR }}
         run: terraform plan -input=false -out=tfplan
 
-      - name: Upload plan for next job
+      - name: Upload Plan Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: tfplan
-          path: ${{ env.TF_DIR }}/tfplan
+          name: tf-artifacts
+          path: |
+            ${{ env.TF_DIR }}/tfplan
+            ${{ env.TF_DIR }}/.terraform/
+            ${{ env.TF_DIR }}/.terraform.lock.hcl
 
   terraform-apply:
     runs-on: ubuntu-latest
@@ -60,10 +64,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download plan
+      - name: Download Terraform Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: tfplan
+          name: tf-artifacts
           path: ${{ env.TF_DIR }}
 
       - name: Authenticate with GCP
