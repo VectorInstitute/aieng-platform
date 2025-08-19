@@ -10,17 +10,9 @@ variable "zone" {
     type = string
 }
 
-variable "user" {
-    type = string
-}
-
 variable "script_path" {
     type    = string
     default = "startup.sh"
-}
-
-variable "public_key_path" {
-    type = string
 }
 
 variable "machine_type" {
