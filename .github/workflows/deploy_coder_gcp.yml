@@ -47,6 +47,13 @@ jobs:
       - name: Terraform Plan
         working-directory: ${{ env.TF_DIR }}
         run: terraform plan -input=false -out=tfplan
+      
+      - name: Run command after plan
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          echo "Checking plan output..."
+          # Your command to run after upload
+          ls -alp
 
       - name: Upload Plan Artifacts
         uses: actions/upload-artifact@v4
