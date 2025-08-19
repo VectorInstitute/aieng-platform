@@ -70,6 +70,10 @@ jobs:
         with:
           name: tf-artifacts
           path: ${{ env.TF_DIR }}
+      
+      - name: Grant execute permissions to Terraform folder
+        working-directory: ${{ env.TF_DIR }}
+        run: chmod -R +x .terraform/
 
       - name: Authenticate with GCP
         uses: google-github-actions/auth@v2
