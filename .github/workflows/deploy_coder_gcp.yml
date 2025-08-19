@@ -4,9 +4,6 @@ on:
   workflow_dispatch:
 
 env:
-  GH_APP_ID: ${{ vars.GH_APP_ID }}
-  GH_APP_CLIENT_ID: ${{ secrets.GH_APP_CLIENT_ID }}
-  GH_APP_CLIENT_SECRET: ${{ secrets.GH_APP_CLIENT_SECRET }}
   TF_DIR: coder/deploy
   TF_VAR_project: ${{ vars.GCP_PROJECT_ID }}
   TF_VAR_script_path: startup.sh
@@ -46,6 +43,10 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_DIR }}
+        env:
+          GH_APP_ID: ${{ vars.GH_APP_ID }}
+          GH_APP_CLIENT_ID: ${{ secrets.GH_APP_CLIENT_ID }}
+          GH_APP_CLIENT_SECRET: ${{ secrets.GH_APP_CLIENT_SECRET }}
         run: terraform plan -input=false -out=tfplan
 
       - name: Upload Plan Artifacts
