@@ -119,8 +119,7 @@ resource "google_compute_instance" "server" {
     }
 
     network_interface {
-        network = "default"
-        access_config {}  # Creates an external IP
+        subnetwork = google_compute_subnetwork.private_subnet.name
     }
 
     service_account {
@@ -130,7 +129,7 @@ resource "google_compute_instance" "server" {
 
     metadata_startup_script = file(var.script_path)
 
-    depends_on = [ google_project_service.cloud_resource_manager_api, google_project_service.compute_api ]
+    depends_on = [ google_project_service.cloud_resource_manager_api, google_project_service.compute_api, google_compute_firewall.firewall, google_compute_network.vpn_network, google_compute_router_nat.nat_config, google_compute_router.nat_router ]
 }
 
 # Next we need to set up the HTTPS load balancer. There are several steps to this.

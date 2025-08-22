@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# It takes some time for outbound internet access to start working via the NAT router. Wait for this with a retry script.
+for i in {1..10}; do
+    if curl -s https://www.google.com --max-time 5 > /dev/null; then
+        echo "Outbound access is working!"
+        break
+    else
+        echo "Waiting for NAT to be ready..."
+        sleep 5
+    fi
+done
+
 # Redirect all the following output to /install.log
 exec > /tmp/install.log 2>&1
 chmod 777 /tmp/install.log
@@ -16,10 +27,6 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
         stable"
 apt-get update
 apt-get install -y docker-ce
-
-# Set some Coder-related environment variables
-# TODO: This still doesn't work, fix it
-export CODER_OAUTH2_GITHUB_ALLOW_SIGNUPS=true
 
 # Install Coder
 export HOME=/root
@@ -43,10 +50,3 @@ systemctl daemon-reload
 
 # Restart the Coder service to apply the new environment variables
 systemctl restart coder
-
-# Run the Coder setup script
-# TODO: I'm not sure if we still need this script under new GCP-based setup. Let's keep it around for now.
-#python3 /tmp/coder_setup.py
-
-# Lastly, delete our setup and user data files, don't want anybody finding them
-#rm -rf /tmp/coder_setup.py
