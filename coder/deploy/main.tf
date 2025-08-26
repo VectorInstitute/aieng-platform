@@ -90,17 +90,13 @@ resource "google_compute_subnetwork" "private_subnet" {
   purpose       = "PRIVATE" # default; can omit
 }
 
-# Create a health check, we'll add this on later
-resource "google_compute_health_check" "tcp_check" {
-  name                = "tcp-health-check"
+resource "google_compute_http_health_check" "default" {
+  name                = "${var.project}-health-check"
   check_interval_sec  = 5
   timeout_sec         = 5
-  healthy_threshold   = 2
   unhealthy_threshold = 10
 
-  tcp_health_check {
-    port = 3000
-  }
+  port = 3000
 }
 
 # Create the compute instance
@@ -157,7 +153,7 @@ resource "google_compute_backend_service" "https_backend" {
   protocol              = "HTTP"
   port_name             = "port-redirection"
   timeout_sec           = 10
-  health_checks         = [google_compute_health_check.tcp_check.self_link]
+  health_checks         = [google_compute_http_health_check.default.id]
   load_balancing_scheme = "EXTERNAL"
 
   backend {
