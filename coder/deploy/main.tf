@@ -99,6 +99,18 @@ resource "google_compute_http_health_check" "default" {
   port = 3000
 }
 
+resource "google_compute_health_check" "tcp_check" {
+  name                = "tcp-health-check"
+  check_interval_sec  = 5
+  timeout_sec         = 5
+  healthy_threshold   = 2
+  unhealthy_threshold = 10
+
+  tcp_health_check {
+    port = 3000
+  }
+}
+
 # Create the compute instance
 resource "google_compute_instance" "server" {
   name                      = var.vm_name
