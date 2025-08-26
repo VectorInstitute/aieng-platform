@@ -75,10 +75,12 @@ resource "google_compute_firewall" "firewall" {
   network = google_compute_network.vpn_network.name
   allow {
     protocol = "tcp"
-    ports    = ["22", "443", "3000"]
+    ports    = ["80", "443", "3000"]
   }
-  source_ranges = ["0.0.0.0/0", "35.235.240.0/20", "130.211.0.0/22", "35.191.0.0/16"]
+  source_ranges = ["0.0.0.0/0", "130.211.0.0/22", "35.191.0.0/16"]
   depends_on    = [google_project_service.compute_api]
+
+  target_tags = ["${var.project}-server", "http-server", "https-server", "lb-backend"]
 }
 
 # Create a separate private subnet. This will be used by the compute instance later.
@@ -117,7 +119,7 @@ resource "google_compute_instance" "server" {
   project                   = var.project
   machine_type              = var.machine_type
   zone                      = var.zone
-  tags                      = ["${var.project}-server", "webserver-fw", "allow-ssh-iap"]
+  tags                      = ["${var.project}-server", "http-server", "https-server", "lb-backend"]
   allow_stopping_for_update = true
 
   boot_disk {
