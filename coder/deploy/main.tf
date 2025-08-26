@@ -167,7 +167,7 @@ resource "google_compute_backend_service" "https_backend" {
   protocol              = "HTTP"
   port_name             = "port-redirection"
   timeout_sec           = 10
-  health_checks         = [google_compute_http_health_check.default.id]
+  health_checks         = [google_compute_health_check.tcp_check.self_link]
   load_balancing_scheme = "EXTERNAL"
 
   backend {
