@@ -28,6 +28,34 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 apt-get update
 apt-get install -y docker-ce
 
+# Install Nginx
+apt-get install -y nginx
+cat > /etc/nginx/sites-available/coder << 'EOF'
+server {
+    listen 80;
+    server_name _;
+    
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";           
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+
+# Enable the site
+ln -sf /etc/nginx/sites-available/coder /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+# Start nginx
+systemctl reload nginx
+systemctl enable nginx
+
 # Install Coder
 export HOME=/root
 curl -L https://coder.com/install.sh | sh
@@ -37,6 +65,8 @@ journalctl -u coder.service -b
 # Since Coder is running as a systemd service, we need to set environment variables in the coder.service.d directory
 mkdir -p /etc/systemd/system/coder.service.d
 echo -e "[Service]\n\
+Environment=CODER_ACCESS_URL=https://platform.vectorinstitute.ai\n\
+Environment=CODER_WILDCARD_ACCESS_URL=*.platform.vectorinstitute.ai\n\
 Environment=CODER_OAUTH2_GITHUB_ALLOW_SIGNUPS=true\n\
 Environment=CODER_OAUTH2_GITHUB_ALLOWED_ORGS=<GH_ALLOWED_ORGS>\n\
 Environment=CODER_OAUTH2_GITHUB_CLIENT_ID=<GH_OAUTH_CLIENT_ID>\n\

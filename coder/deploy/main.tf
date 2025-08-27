@@ -69,18 +69,19 @@ resource "google_compute_router_nat" "nat_config" {
 
 # Firewall settings.
 # The IP ranges are for Google's internal network, these shouldn't change
-# TODO: Some of these IP ranges are not needed, test and trim them
 resource "google_compute_firewall" "firewall" {
   name    = "${var.project}-firewall"
   network = google_compute_network.vpn_network.name
   allow {
     protocol = "tcp"
-    ports    = ["80", "443", "22", "3389", "3000"]
+    ports    = ["80", "443"]
   }
   source_ranges = ["0.0.0.0/0", "35.235.240.0/20" /*required for ssh*/, "130.211.0.0/22", "35.191.0.0/16"]
   depends_on    = [google_project_service.compute_api]
 
-  target_tags = ["${var.project}-server", "http-server", "https-server", "lb-backend"]
+  target_tags = ["http-server", "https-server"]
+
+  priority = 65534
 }
 
 # Create a separate private subnet. This will be used by the compute instance later.
@@ -92,15 +93,6 @@ resource "google_compute_subnetwork" "private_subnet" {
   purpose       = "PRIVATE" # default; can omit
 }
 
-resource "google_compute_http_health_check" "default" {
-  name                = "${var.project}-health-check"
-  check_interval_sec  = 5
-  timeout_sec         = 5
-  unhealthy_threshold = 10
-
-  port = 3000
-}
-
 resource "google_compute_health_check" "tcp_check" {
   name                = "tcp-health-check"
   check_interval_sec  = 5
@@ -109,7 +101,7 @@ resource "google_compute_health_check" "tcp_check" {
   unhealthy_threshold = 10
 
   tcp_health_check {
-    port = 3000
+    port = 80
   }
 }
 
@@ -119,7 +111,7 @@ resource "google_compute_instance" "server" {
   project                   = var.project
   machine_type              = var.machine_type
   zone                      = var.zone
-  tags                      = ["${var.project}-server", "webserver-fw", "allow-ssh-iap", "http-server", "https-server", "lb-backend"]
+  tags                      = ["${var.project}-server", "webserver-fw", "allow-ssh-iap", "http-server", "https-server"]
   allow_stopping_for_update = true
 
   boot_disk {
