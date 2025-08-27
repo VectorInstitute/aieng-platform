@@ -74,7 +74,7 @@ resource "google_compute_firewall" "firewall" {
   network = google_compute_network.vpn_network.name
   allow {
     protocol = "tcp"
-    ports    = ["80", "443"]
+    ports    = ["80", "443", "22", "3389",]
   }
   source_ranges = ["0.0.0.0/0", "35.235.240.0/20" /*required for ssh*/, "130.211.0.0/22", "35.191.0.0/16"]
   depends_on    = [google_project_service.compute_api]
@@ -149,7 +149,7 @@ resource "google_compute_instance_group" "instance_group" {
 
   named_port {
     name = "port-redirection"
-    port = 3000
+    port = 80
   }
 }
 
