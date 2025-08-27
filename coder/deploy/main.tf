@@ -119,7 +119,7 @@ resource "google_compute_instance" "server" {
   project                   = var.project
   machine_type              = var.machine_type
   zone                      = var.zone
-  tags                      = ["${var.project}-server", "http-server", "https-server", "lb-backend"]
+  tags                      = ["${var.project}-server", "webserver-fw", "allow-ssh-iap", "http-server", "https-server", "lb-backend"]
   allow_stopping_for_update = true
 
   boot_disk {

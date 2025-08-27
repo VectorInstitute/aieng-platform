@@ -1,4 +1,4 @@
-FROM ghcr.io/astral-sh/uv:python3.10-bookworm-slim
+FROM ubuntu:24.04
 
 # Install system dependencies
 RUN apt-get update \
@@ -9,6 +9,9 @@ RUN apt-get update \
     jq \
     tar \
     unzip \
+    python3 \
+    python3-pip \
+    python3-venv \
     ca-certificates \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
