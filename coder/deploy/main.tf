@@ -75,9 +75,9 @@ resource "google_compute_firewall" "firewall" {
   network = google_compute_network.vpn_network.name
   allow {
     protocol = "tcp"
-    ports    = ["80", "443", "3000"]
+    ports    = ["80", "443", "3000-4000"]
   }
-  source_ranges = ["0.0.0.0/0", "130.211.0.0/22", "35.191.0.0/16"]
+  source_ranges = ["0.0.0.0/0", "35.235.240.0/20" /*required for ssh*/, "130.211.0.0/22", "35.191.0.0/16"]
   depends_on    = [google_project_service.compute_api]
 
   target_tags = ["${var.project}-server", "http-server", "https-server", "lb-backend"]
