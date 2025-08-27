@@ -41,7 +41,7 @@ journalctl -u coder.service -b
 mkdir -p /etc/systemd/system/coder.service.d
 echo -e "[Service]\n\
 ExecStart=\n\
-ExecStart=/usr/bin/coder server --access-url=https://platform.vectorinstitute.ai --wildcard-access-url=*.platform.vectorinstitute.ai --http-address=0.0.0.0:80 --tls-enable=true --tls-address=0.0.0.0:443 --redirect-to-access-url=true\n\
+ExecStart=/usr/bin/coder server --access-url=https://platform.vectorinstitute.ai --wildcard-access-url=*.platform.vectorinstitute.ai --http-address=0.0.0.0:80\n\
 Environment=CODER_OAUTH2_GITHUB_ALLOW_SIGNUPS=true\n\
 Environment=CODER_OAUTH2_GITHUB_ALLOW_EVERYONE=true\n\
 Environment=CODER_OAUTH2_GITHUB_CLIENT_ID=<GH_OAUTH_CLIENT_ID>\n\
