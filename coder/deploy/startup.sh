@@ -43,7 +43,7 @@ echo -e "[Service]\n\
 ExecStart=\n\
 ExecStart=/usr/bin/coder server --access-url=https://platform.vectorinstitute.ai --wildcard-access-url=*.platform.vectorinstitute.ai --http-address=0.0.0.0:80\n\
 Environment=CODER_OAUTH2_GITHUB_ALLOW_SIGNUPS=true\n\
-Environment=CODER_OAUTH2_GITHUB_ALLOW_EVERYONE=true\n\
+Environment=CODER_OAUTH2_GITHUB_ALLOWED_ORGS=<GH_ALLOWED_ORGS>\n\
 Environment=CODER_OAUTH2_GITHUB_CLIENT_ID=<GH_OAUTH_CLIENT_ID>\n\
 Environment=CODER_OAUTH2_GITHUB_CLIENT_SECRET=<GH_OAUTH_CLIENT_SECRET>\n\
 Environment=CODER_EXTERNAL_AUTH_0_ID=<GH_APP_ID>\n\
