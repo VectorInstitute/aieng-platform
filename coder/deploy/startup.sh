@@ -58,3 +58,22 @@ systemctl daemon-reload
 
 # Restart the Coder service to apply the new environment variables
 systemctl restart coder
+
+# Wait for Coder to be ready
+echo "Waiting for Coder to be ready..."
+for i in {1..30}; do
+    if curl -s http://localhost:80/healthz > /dev/null 2>&1; then
+        echo "Coder is ready!"
+        break
+    else
+        echo "Waiting for Coder to start..."
+        sleep 5
+    fi
+done
+
+# Add license key if provided
+if [ -n "<CODER_LICENSE>" ] && [ "<CODER_LICENSE>" != "" ]; then
+    echo "Adding Coder license..."
+    # The coder CLI can add licenses using the API without authentication on a fresh install
+    echo "<CODER_LICENSE>" | /usr/bin/coder licenses add -l -
+fi
