@@ -194,11 +194,15 @@ resource "google_compute_managed_ssl_certificate" "lb_default" {
   }
 }
 
+data "google_compute_ssl_policy" "secure_tls12" {
+  name = "secure-tls12"
+}
+
 resource "google_compute_target_https_proxy" "default" {
   name             = "${var.project}-https-proxy"
   url_map          = google_compute_url_map.default.id
   ssl_certificates = [google_compute_managed_ssl_certificate.lb_default.id]
-  ssl_policy       = null
+  ssl_policy       = data.google_compute_ssl_policy.secure_tls12.id
 }
 
 resource "google_compute_global_address" "default" {
