@@ -61,19 +61,31 @@ systemctl restart coder
 
 # Wait for Coder to be ready
 echo "Waiting for Coder to be ready..."
+CODER_READY=false
 for i in {1..30}; do
     if curl -s http://localhost:80/healthz > /dev/null 2>&1; then
         echo "Coder is ready!"
+        CODER_READY=true
         break
     else
-        echo "Waiting for Coder to start..."
+        echo "Waiting for Coder to start... (attempt $i/30)"
         sleep 5
     fi
 done
 
+if [ "$CODER_READY" = false ]; then
+    echo "ERROR: Coder failed to start after 150 seconds. Check logs with: journalctl -u coder.service"
+    exit 1
+fi
+
 # Add license key if provided
-if [ -n "<CODER_LICENSE>" ] && [ "<CODER_LICENSE>" != "" ]; then
+if [ -n "<CODER_LICENSE>" ]; then
     echo "Adding Coder license..."
     # The coder CLI can add licenses using the API without authentication on a fresh install
-    echo "<CODER_LICENSE>" | /usr/bin/coder licenses add -l -
+    if echo "<CODER_LICENSE>" | /usr/bin/coder licenses add -l -; then
+        echo "Coder license activated successfully!"
+    else
+        echo "ERROR: Failed to activate Coder license (exit code: $?). Check if the license is valid."
+        exit 1
+    fi
 fi
