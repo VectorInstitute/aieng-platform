@@ -105,6 +105,19 @@ resource "google_compute_health_check" "tcp_check" {
   }
 }
 
+# Create a persistent boot disk for the VM
+resource "google_compute_disk" "vm_boot_disk" {
+  name  = "${var.vm_name}-boot-disk"
+  type  = "pd-standard"
+  zone  = var.zone
+  image = "ubuntu-2204-lts"
+  size  = 20
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 # Create the compute instance
 resource "google_compute_instance" "server" {
   name                      = var.vm_name
@@ -115,9 +128,8 @@ resource "google_compute_instance" "server" {
   allow_stopping_for_update = true
 
   boot_disk {
-    initialize_params {
-      image = "ubuntu-2204-lts"
-    }
+    source      = google_compute_disk.vm_boot_disk.id
+    auto_delete = false # Important: Prevents disk deletion with VM
   }
 
   network_interface {
