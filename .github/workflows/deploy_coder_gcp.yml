@@ -51,7 +51,6 @@ jobs:
           -e "s|<GH_ALLOWED_ORGS>|${{ vars.GH_ALLOWED_ORGS }}|g" \
           -e "s|<GH_OAUTH_CLIENT_ID>|${{ secrets.GH_OAUTH_CLIENT_ID }}|g" \
           -e "s|<GH_OAUTH_CLIENT_SECRET>|${{ secrets.GH_OAUTH_CLIENT_SECRET }}|g" \
-          -e "s|<CODER_LICENSE>|${{ secrets.CODER_LICENSE }}|g" \
           ${{ env.TF_VAR_script_path }}
 
       - name: Terraform Plan
@@ -110,7 +109,6 @@ jobs:
           -e "s|<GH_ALLOWED_ORGS>|${{ vars.GH_ALLOWED_ORGS }}|g" \
           -e "s|<GH_OAUTH_CLIENT_ID>|${{ secrets.GH_OAUTH_CLIENT_ID }}|g" \
           -e "s|<GH_OAUTH_CLIENT_SECRET>|${{ secrets.GH_OAUTH_CLIENT_SECRET }}|g" \
-          -e "s|<CODER_LICENSE>|${{ secrets.CODER_LICENSE }}|g" \
           ${{ env.TF_VAR_script_path }}
 
       - name: Terraform Apply

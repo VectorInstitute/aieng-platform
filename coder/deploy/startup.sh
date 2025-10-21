@@ -77,15 +77,3 @@ if [ "$CODER_READY" = false ]; then
     echo "ERROR: Coder failed to start after 150 seconds. Check logs with: journalctl -u coder.service"
     exit 1
 fi
-
-# Add license key if provided
-if [ -n "<CODER_LICENSE>" ]; then
-    echo "Adding Coder license..."
-    # The coder CLI can add licenses using the API without authentication on a fresh install
-    if echo "<CODER_LICENSE>" | /usr/bin/coder licenses add -l -; then
-        echo "Coder license activated successfully!"
-    else
-        echo "ERROR: Failed to activate Coder license (exit code: $?). Check if the license is valid."
-        exit 1
-    fi
-fi
