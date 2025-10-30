@@ -40,7 +40,7 @@ jobs:
       - name: Terraform Init
         working-directory: ${{ env.TF_DIR }}
         run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
-      
+
       - name: Replace env variables in startup script
         working-directory: ${{ env.TF_DIR }}
         run: |
@@ -79,7 +79,7 @@ jobs:
         with:
           name: tf-artifacts
           path: ${{ env.TF_DIR }}
-      
+
       - name: Grant execute permissions to Terraform folder
         working-directory: ${{ env.TF_DIR }}
         run: chmod -R +x .terraform/
