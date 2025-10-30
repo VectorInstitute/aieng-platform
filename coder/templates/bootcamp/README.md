@@ -21,7 +21,7 @@ This template provisions Coder workspaces on Google Cloud Platform (GCP) for Vec
 
 ## Usage
 
-1. **Configure Variables**  
+1. **Configure Variables**
    Copy `terraform.tfvars.example` to `terraform.tfvars` and update values:
    - `project`, `region`, `zone`: GCP settings
    - `machine_type`: VM type (e.g., `e2-medium`)
@@ -29,14 +29,14 @@ This template provisions Coder workspaces on Google Cloud Platform (GCP) for Vec
    - `jupyterlab`, `codeserver`, `streamlit`: `"true"` or `"false"` to enable apps
    - `github_repo`, `github_branch`: Repository and branch to clone
 
-2. **Push Template to Coder**  
+2. **Push Template to Coder**
    ```sh
    coder login <your-coder-instance-url>
    cp terraform.tfvars.example terraform.tfvars
    coder templates push
    ```
 
-3. **Verify Workspace**  
+3. **Verify Workspace**
    Launch a workspace from the Coder dashboard and confirm your environment is set up.
 
 ## Reference
@@ -45,5 +45,5 @@ This template provisions Coder workspaces on Google Cloud Platform (GCP) for Vec
 - [GCP VM Documentation](https://cloud.google.com/compute/docs/instances)
 - [Docker Build & Push Guide](../../docker/README.md)
 
-> **Note:**  
+> **Note:**
 > This template is a starting point. Customize the Terraform files and Docker images to fit your

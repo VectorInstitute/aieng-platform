@@ -21,7 +21,7 @@ This template provisions Coder workspaces on Google Cloud Platform (GCP) with GP
 
 ## Usage
 
-1. **Configure Variables**  
+1. **Configure Variables**
    Copy `terraform.tfvars.example` to `terraform.tfvars` and update values:
    - `project`, `region`, `zone`: GCP settings
    - `machine_type`: VM type (e.g., `n1-standard-4`)
@@ -29,14 +29,14 @@ This template provisions Coder workspaces on Google Cloud Platform (GCP) with GP
    - `container_image`: Docker image URI
    - `jupyterlab`, `codeserver`, `streamlit`: `"true"` or `"false"` to enable apps
 
-2. **Push Template to Coder**  
+2. **Push Template to Coder**
    ```sh
    coder login <your-coder-instance-url>
    cp terraform.tfvars.example terraform.tfvars
    coder templates push <template-name>
    ```
 
-3. **Verify Workspace**  
+3. **Verify Workspace**
    Launch a workspace from the Coder dashboard and confirm GPU availability (e.g., `nvidia-smi`).
 
 ## Reference
@@ -45,5 +45,5 @@ This template provisions Coder workspaces on Google Cloud Platform (GCP) with GP
 - [GCP GPU VM Documentation](https://cloud.google.com/compute/docs/gpus)
 - [Docker CUDA Images](https://hub.docker.com/r/nvidia/cuda)
 
-> **Note:**  
+> **Note:**
 > This template is a starting point. Customize the Terraform files and Docker images to fit your bootcamp requirements.

@@ -145,4 +145,3 @@ if [[ ${error_count} -gt 0 ]]; then
 else
     log_success "Script completed successfully"
 fi
-
