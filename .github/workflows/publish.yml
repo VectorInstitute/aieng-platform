@@ -1,0 +1,81 @@
+name: Publish Package to PyPI
+
+permissions:
+  contents: write
+  id-token: write
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-and-publish:
+    name: Build and publish Python distribution to PyPI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.9.7"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install the project
+        run: uv sync --no-dev
+
+      - name: Build package
+        run: uv build
+
+      - name: Verify package contents
+        run: |
+          echo "=== Contents of dist/ ==="
+          ls -lh dist/
+          echo ""
+          echo "=== Wheel contents ==="
+          unzip -l dist/*.whl || true
+          echo ""
+          echo "=== Tarball contents ==="
+          tar -tzf dist/*.tar.gz || true
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          verbose: true
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "dist/*"
+          generateReleaseNotes: true
+          body: |
+            ## Installation
+            ```bash
+            pip install aieng-platform-onboard
+            ```
+
+            ## Usage
+
+            ### Basic Onboarding
+            ```bash
+            onboard --bootcamp-name <bootcamp-name>
+            ```
+
+            ### With Integration Tests
+            If you have a test script to verify API keys:
+            ```bash
+            onboard --bootcamp-name <bootcamp-name> --skip-test
+            python path/to/test_keys.py
+            ```
+
+            Or let onboard run your test script automatically by placing it in the same directory as the CLI.

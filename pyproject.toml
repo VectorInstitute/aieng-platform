@@ -1,7 +1,7 @@
 [project]
-name = "aieng-platform"
+name = "aieng-platform-onboard"
 version = "0.1.0"
-description = "Platform infrastructure and tooling for AI Engineering bootcamps"
+description = "CLI tool for onboarding participants to AI Engineering bootcamps"
 readme = "README.md"
 authors = [{name = "Vector AI Engineering", email = "ai_engineering@vectorinstitute.ai"}]
 license = "Apache-2.0"
@@ -15,16 +15,25 @@ dependencies = [
     "weaviate-client>=4.0.0",
     "requests>=2.31.0",
     "python-dotenv>=1.0.0",
-    "pandas>=2.0.0",
     "rich>=13.0.0",
 ]
+
+[project.scripts]
+onboard = "aieng_platform_onboard.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-only-include = ["README.md"]
+packages = ["src/aieng_platform_onboard"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src/aieng_platform_onboard",
+    "/README.md",
+    "/pyproject.toml",
+]
 
 [dependency-groups]
 dev = [
