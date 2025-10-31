@@ -28,12 +28,26 @@ only-include = ["README.md"]
 
 [dependency-groups]
 dev = [
+    "codecov>=2.1.13",
     "mypy>=1.14.1",
+    "nbqa>=1.9.1",
+    "pip>=25.2", # Pinning version to address vulnerability GHSA-4xh5-x5gv-qwph
+    "pip-audit>=2.7.3",
     "pre-commit>=4.1.0",
     "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.2",
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",
     "ruff>=0.9.2",
+]
+docs = [
+    "jinja2>=3.1.6", # Pinning version to address vulnerability GHSA-cpwx-vrp4-4pq7
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.15",
+    "mkdocstrings>=0.24.1",
+    "mkdocstrings-python>=1.10.0",
+    "ipykernel>=6.29.5",
+    "ipython>=8.31.0",
 ]
 
 # Default dependency groups to be installed
