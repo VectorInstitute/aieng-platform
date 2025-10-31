@@ -1,5 +1,13 @@
 # AI Engineering Platform
 
+----------------------------------------------------------------------------------------
+
+[![PyPI](https://img.shields.io/pypi/v/aieng-platform-onboard)](https://pypi.org/project/aieng-platform-onboard)
+[![code checks](https://github.com/VectorInstitute/aieng-platform/actions/workflows/code_checks.yml/badge.svg)](https://github.com/VectorInstitute/aieng-platform/actions/workflows/code_checks.yml)
+[![docs](https://github.com/VectorInstitute/aieng-platform/actions/workflows/docs.yml/badge.svg)](https://github.com/VectorInstitute/aieng-platform/actions/workflows/docs.yml)
+![GitHub License](https://img.shields.io/github/license/VectorInstitute/aieng-platform)
+
+
 Infrastructure and tooling for AI Engineering bootcamps, providing secure, isolated development environments and automated participant onboarding.
 
 ## Overview
