@@ -1,0 +1,3 @@
+team_name,langfuse_secret_key,langfuse_public_key
+example-team,sk-lf-example-secret-key-12345,pk-lf-example-public-key-12345
+awesome-team,sk-lf-awesome-secret-key-67890,pk-lf-awesome-public-key-67890

@@ -1,0 +1,57 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to get GitHub handle from auth
+    // Assumes GitHub auth is being used with Coder
+    function getGitHubHandle() {
+      return request.auth.token.github_handle;
+    }
+
+    // Helper function to get the user's team name from their participant document
+    function getUserTeam() {
+      let participantDoc = get(/databases/$(database)/documents/participants/$(getGitHubHandle()));
+      return participantDoc.data.team_name;
+    }
+
+    // Helper function to check if user belongs to a specific team
+    function isUserTeam(teamName) {
+      return isAuthenticated() && getUserTeam() == teamName;
+    }
+
+    // Global keys collection - read-only for all authenticated users
+    match /global_keys/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only admins via backend
+    }
+
+    // Teams collection - users can only read their own team's data
+    match /teams/{teamId} {
+      // Users can only read their own team (which contains API keys)
+      allow read: if isUserTeam(teamId);
+      allow write: if false; // Only admins via backend
+    }
+
+    // Participants collection
+    match /participants/{participantId} {
+      // Users can read their own participant document
+      allow read: if isAuthenticated() &&
+                     participantId == getGitHubHandle();
+
+      // Users can update their own onboarded status and onboarded_at timestamp
+      allow update: if isAuthenticated() &&
+                       participantId == getGitHubHandle() &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['onboarded', 'onboarded_at']);
+
+      // No create or delete for participants (admin only)
+      allow create, delete: if false;
+    }
+  }
+}

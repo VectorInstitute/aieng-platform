@@ -30,3 +30,4 @@ terraform.tfvars
 .terraform.tfstate.lock.info
 
 .coder
+keys/
