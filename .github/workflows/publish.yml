@@ -52,30 +52,3 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           verbose: true
-
-      - name: Create GitHub Release
-        uses: ncipollo/release-action@v1
-        with:
-          artifacts: "dist/*"
-          generateReleaseNotes: true
-          body: |
-            ## Installation
-            ```bash
-            pip install aieng-platform-onboard
-            ```
-
-            ## Usage
-
-            ### Basic Onboarding
-            ```bash
-            onboard --bootcamp-name <bootcamp-name>
-            ```
-
-            ### With Integration Tests
-            If you have a test script to verify API keys:
-            ```bash
-            onboard --bootcamp-name <bootcamp-name> --skip-test
-            python path/to/test_keys.py
-            ```
-
-            Or let onboard run your test script automatically by placing it in the same directory as the CLI.
