@@ -3,10 +3,10 @@
 # Script to remove GitHub users from AI-Engineering-Platform organization
 # Usage: ./remove_users.sh <csv_file> [--dry-run]
 #
-# CSV Format: Single column with GitHub usernames (no header required)
+# CSV Format: Single column with GitHub usernames or emails (no header required)
 # Example CSV:
 #   username1
-#   username2
+#   user2@example.com
 #   username3
 
 set -euo pipefail
@@ -47,7 +47,7 @@ Usage: $0 <csv_file> [OPTIONS]
 Remove GitHub users from ${ORG_NAME} organization.
 
 Arguments:
-    csv_file        Path to CSV file containing GitHub usernames (one per line)
+    csv_file        Path to CSV file containing GitHub usernames or emails (one per line)
 
 Options:
     --dry-run       Preview actions without making changes
@@ -58,12 +58,16 @@ Examples:
     $0 users.csv --dry-run
 
 CSV Format:
-    Single column with GitHub usernames, no header required:
+    Single column with GitHub usernames or emails, no header required:
         username1
-        username2
+        user2@example.com
         username3
 
-WARNING: This will permanently remove users from the organization.
+Notes:
+    - For usernames: Removes existing organization members
+    - For emails: Cancels pending invitations (cannot remove members by email)
+
+WARNING: This will permanently remove users/invitations from the organization.
          Make sure to use --dry-run first to preview the changes.
 EOF
     exit 1
@@ -145,91 +149,145 @@ if ! gh api "orgs/${ORG_NAME}" &> /dev/null; then
 fi
 log_success "Organization access verified"
 
-# Read usernames from CSV file
-log_info "Reading usernames from CSV file"
-usernames=()
+# Read identifiers (usernames or emails) from CSV file
+log_info "Reading identifiers from CSV file"
+identifiers=()
 line_number=0
 while IFS= read -r line || [[ -n "${line}" ]]; do
     ((line_number++))
 
     # Trim whitespace
-    username=$(echo "${line}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    identifier=$(echo "${line}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
     # Skip empty lines
-    [[ -z "${username}" ]] && continue
+    [[ -z "${identifier}" ]] && continue
 
     # Skip lines that look like headers (case-insensitive)
-    if [[ "${username}" =~ ^(username|user|github|name)$ ]] && [[ ${line_number} -eq 1 ]]; then
-        log_info "Skipping header line: ${username}"
+    if [[ "${identifier}" =~ ^(username|user|github|name|email)$ ]] && [[ ${line_number} -eq 1 ]]; then
+        log_info "Skipping header line: ${identifier}"
         continue
     fi
 
-    # Validate username format (GitHub usernames: alphanumeric and hyphens)
-    if [[ ! "${username}" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]]; then
-        log_warning "Invalid username format at line ${line_number}: ${username}"
+    # Validate format: either GitHub username or email
+    # GitHub usernames: alphanumeric and hyphens, 1-39 characters
+    # Email: basic email validation
+    if [[ "${identifier}" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]] || [[ "${identifier}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        identifiers+=("${identifier}")
+    else
+        log_warning "Invalid format at line ${line_number}: ${identifier}"
+        log_warning "Must be a valid GitHub username or email address"
         continue
     fi
-
-    usernames+=("${username}")
 done < "${CSV_FILE}"
 
-user_count=${#usernames[@]}
-if [[ ${user_count} -eq 0 ]]; then
-    log_error "No valid usernames found in CSV file"
+identifier_count=${#identifiers[@]}
+if [[ ${identifier_count} -eq 0 ]]; then
+    log_error "No valid usernames or emails found in CSV file"
     exit 1
 fi
 
-log_success "Found ${user_count} valid username(s) to process"
+log_success "Found ${identifier_count} valid identifier(s) to process"
 
 # Warning for non-dry-run mode
 if [[ "${DRY_RUN}" == false ]]; then
-    log_warning "This will remove ${user_count} user(s) from ${ORG_NAME}"
+    log_warning "This will remove ${identifier_count} user(s)/invitation(s) from ${ORG_NAME}"
     log_warning "Press Ctrl+C within 5 seconds to cancel..."
     sleep 5
 fi
 
 # Counters for summary
 removed_count=0
+invitation_cancelled_count=0
 not_member_count=0
 error_count=0
 
-# Process each username
-for username in "${usernames[@]}"; do
-    log_info "Processing user: ${username}"
+# Fetch pending invitations once (outside the loop for efficiency)
+log_info "Fetching pending invitations..."
+pending_invitations_json=$(gh api "orgs/${ORG_NAME}/invitations" 2>/dev/null || echo "[]")
 
-    # Check if user exists on GitHub
-    if ! gh api "users/${username}" &> /dev/null; then
-        log_error "GitHub user not found: ${username}"
-        ((error_count++))
-        continue
+# Process each identifier
+for identifier in "${identifiers[@]}"; do
+    log_info "Processing: ${identifier}"
+
+    # Determine if identifier is an email or username
+    is_email=false
+    if [[ "${identifier}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        is_email=true
     fi
 
-    # Check if user is a member of the organization
-    if ! gh api "orgs/${ORG_NAME}/members/${username}" &> /dev/null 2>&1; then
-        log_warning "User ${username} is not a member of ${ORG_NAME}"
-        ((not_member_count++))
-        continue
-    fi
+    if [[ "${is_email}" == true ]]; then
+        # Process as email - look for pending invitations to cancel
+        email="${identifier}"
 
-    # Remove user from organization
-    if [[ "${DRY_RUN}" == true ]]; then
-        log_info "Would remove user: ${username}"
-        ((removed_count++))
+        # Find invitation ID for this email
+        invitation_id=$(echo "${pending_invitations_json}" | jq -r --arg email "${email}" '.[] | select(.email == $email) | .id' 2>/dev/null)
+
+        if [[ -z "${invitation_id}" ]]; then
+            log_warning "No pending invitation found for email: ${email}"
+            log_warning "Note: Cannot remove organization members by email - please use their username"
+            ((not_member_count++))
+            continue
+        fi
+
+        # Cancel the invitation
+        if [[ "${DRY_RUN}" == true ]]; then
+            log_info "Would cancel invitation for: ${email} (invitation ID: ${invitation_id})"
+            ((invitation_cancelled_count++))
+        else
+            cancel_result=$(gh api \
+                --method DELETE \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "orgs/${ORG_NAME}/invitations/${invitation_id}" 2>&1)
+
+            exit_code=$?
+            if [[ ${exit_code} -eq 0 ]]; then
+                log_success "Cancelled invitation for: ${email}"
+                ((invitation_cancelled_count++))
+            else
+                log_error "Failed to cancel invitation for: ${email}"
+                log_error "Error: ${cancel_result}"
+                ((error_count++))
+            fi
+        fi
     else
-        remove_result=$(gh api \
-            --method DELETE \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "orgs/${ORG_NAME}/members/${username}" 2>&1)
+        # Process as username
+        username="${identifier}"
 
-        exit_code=$?
-        if [[ ${exit_code} -eq 0 ]]; then
-            log_success "Removed user: ${username}"
+        # Check if user exists on GitHub
+        if ! gh api "users/${username}" &> /dev/null; then
+            log_error "GitHub user not found: ${username}"
+            ((error_count++))
+            continue
+        fi
+
+        # Check if user is a member of the organization
+        if ! gh api "orgs/${ORG_NAME}/members/${username}" &> /dev/null 2>&1; then
+            log_warning "User ${username} is not a member of ${ORG_NAME}"
+            ((not_member_count++))
+            continue
+        fi
+
+        # Remove user from organization
+        if [[ "${DRY_RUN}" == true ]]; then
+            log_info "Would remove user: ${username}"
             ((removed_count++))
         else
-            log_error "Failed to remove user: ${username}"
-            log_error "Error: ${remove_result}"
-            ((error_count++))
+            remove_result=$(gh api \
+                --method DELETE \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "orgs/${ORG_NAME}/members/${username}" 2>&1)
+
+            exit_code=$?
+            if [[ ${exit_code} -eq 0 ]]; then
+                log_success "Removed user: ${username}"
+                ((removed_count++))
+            else
+                log_error "Failed to remove user: ${username}"
+                log_error "Error: ${remove_result}"
+                ((error_count++))
+            fi
         fi
     fi
 done
@@ -237,16 +295,17 @@ done
 # Print summary
 echo ""
 log_info "=== Summary ==="
-log_info "Total users processed: ${user_count}"
+log_info "Total identifiers processed: ${identifier_count}"
 log_success "Users removed: ${removed_count}"
-log_warning "Not members: ${not_member_count}"
+log_success "Invitations cancelled: ${invitation_cancelled_count}"
+log_warning "Not members/no invitations: ${not_member_count}"
 
 if [[ ${error_count} -gt 0 ]]; then
     log_error "Errors encountered: ${error_count}"
     exit 1
 else
     if [[ "${DRY_RUN}" == true ]]; then
-        log_info "Dry run completed successfully. Run without --dry-run to remove users."
+        log_info "Dry run completed successfully. Run without --dry-run to remove users/invitations."
     else
         log_success "Script completed successfully"
     fi
