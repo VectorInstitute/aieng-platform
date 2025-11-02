@@ -1,6 +1,6 @@
 [project]
 name = "aieng-platform-onboard"
-version = "0.2.0"
+version = "0.3.0"
 description = "CLI tool for onboarding participants to AI Engineering bootcamps"
 readme = "README.md"
 authors = [{name = "Vector AI Engineering", email = "ai_engineering@vectorinstitute.ai"}]
