@@ -257,7 +257,9 @@ def _setup_environment(
     return output_path
 
 
-def _run_tests_and_finalize(db: Any, github_user: str, skip_test: bool) -> bool:
+def _run_tests_and_finalize(
+    db: Any, github_user: str, skip_test: bool, test_script: str
+) -> bool:
     """
     Run integration tests and update onboarded status.
 
@@ -269,6 +271,8 @@ def _run_tests_and_finalize(db: Any, github_user: str, skip_test: bool) -> bool:
         GitHub username.
     skip_test : bool
         Whether to skip integration tests.
+    test_script : str
+        Path to the integration test script.
 
     Returns
     -------
@@ -280,25 +284,25 @@ def _run_tests_and_finalize(db: Any, github_user: str, skip_test: bool) -> bool:
         console.print("[bold]Step 8: Run Integration Test[/bold]")
         console.print("[cyan]Testing API keys...[/cyan]")
 
-        # Determine test script path - look in the package directory
-        package_dir = Path(__file__).parent
-        test_script = package_dir / "test_keys.py"
+        test_script_path = Path(test_script)
 
-        if not test_script.exists():
-            console.print("[yellow]⚠ Test script not found, skipping tests[/yellow]\n")
+        if not test_script_path.exists():
+            console.print(
+                f"[red]✗ Test script not found at: {test_script_path}[/red]\n"
+            )
+            return False
+        success_test, output = run_integration_test(test_script_path)
+
+        if success_test:
+            console.print("[green]✓ All API keys tested successfully[/green]\n")
         else:
-            success_test, output = run_integration_test(test_script)
-
-            if success_test:
-                console.print("[green]✓ All API keys tested successfully[/green]\n")
-            else:
-                console.print(
-                    "[red]✗ Integration test failed:[/red]\n"
-                    f"[dim]{output}[/dim]\n\n"
-                    "[yellow]Your .env file was created, but some keys may not work.[/yellow]\n"
-                    "[dim]Contact bootcamp admin if you need assistance[/dim]\n"
-                )
-                return False
+            console.print(
+                "[red]✗ Integration test failed:[/red]\n"
+                f"[dim]{output}[/dim]\n\n"
+                "[yellow]Your .env file was created, but some keys may not work.[/yellow]\n"
+                "[dim]Contact bootcamp admin if you need assistance[/dim]\n"
+            )
+            return False
     else:
         console.print("[dim]Integration test skipped[/dim]\n")
 
@@ -356,6 +360,12 @@ def main() -> int:
         help="Skip integration test",
     )
     parser.add_argument(
+        "--test-script",
+        type=str,
+        required=True,
+        help="Path to integration test script",
+    )
+    parser.add_argument(
         "--firebase-api-key",
         type=str,
         help="Firebase Web API key for token exchange (or set FIREBASE_WEB_API_KEY env var)",
@@ -392,7 +402,7 @@ def main() -> int:
         return 1
 
     # Run tests and finalize
-    if not _run_tests_and_finalize(db, github_user, args.skip_test):
+    if not _run_tests_and_finalize(db, github_user, args.skip_test, args.test_script):
         return 1
 
     # Final summary
