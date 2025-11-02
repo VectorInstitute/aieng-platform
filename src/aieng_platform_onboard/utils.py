@@ -119,7 +119,12 @@ def fetch_token_from_service(  # noqa: PLR0911
             # User credentials or other - use gcloud
             try:
                 result = subprocess.run(
-                    ["gcloud", "auth", "print-identity-token"],
+                    [
+                        "gcloud",
+                        "auth",
+                        "print-identity-token",
+                        f"--audiences={token_service_url}",
+                    ],
                     check=False,
                     capture_output=True,
                     text=True,
