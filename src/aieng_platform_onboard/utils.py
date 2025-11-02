@@ -1,12 +1,16 @@
 """Shared utilities for participant onboarding scripts."""
 
 import os
+import subprocess
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import google.auth
 import requests
-from google.cloud import firestore, secretmanager  # type: ignore[attr-defined]
+from google.auth import jwt as google_jwt
+from google.cloud import firestore
 from google.oauth2 import credentials as oauth2_credentials
 from rich.console import Console
 
@@ -50,20 +54,22 @@ def get_github_user() -> str | None:
     return github_user
 
 
-def fetch_token_from_secret_manager(
-    github_handle: str, bootcamp_name: str, project_id: str
+def fetch_token_from_service(  # noqa: PLR0911
+    github_handle: str, token_service_url: str | None = None
 ) -> tuple[bool, str | None, str | None]:
     """
-    Fetch Firebase token from GCP Secret Manager.
+    Fetch fresh Firebase token from Cloud Run token service.
+
+    This generates tokens on-demand using the workspace service account identity.
+    Tokens are always fresh (< 1 hour old).
 
     Parameters
     ----------
     github_handle : str
         GitHub handle of the participant.
-    bootcamp_name : str
-        Name of the bootcamp.
-    project_id : str
-        GCP project ID.
+    token_service_url : str | None, optional
+        Token service URL. If not provided, reads from TOKEN_SERVICE_URL env var
+        or .token-service-url file.
 
     Returns
     -------
@@ -71,17 +77,88 @@ def fetch_token_from_secret_manager(
         Tuple of (success, token_value, error_message).
     """
     try:
-        client = secretmanager.SecretManagerServiceClient()
-        secret_name = f"{bootcamp_name}-token-{github_handle}"
-        name = f"projects/{project_id}/secrets/{secret_name}/versions/latest"
+        # Get token service URL
+        if not token_service_url:
+            token_service_url = os.environ.get("TOKEN_SERVICE_URL")
 
-        response = client.access_secret_version(request={"name": name})
-        token = response.payload.data.decode("UTF-8")
+        if not token_service_url:
+            # Try reading from config file
+            config_file = Path.home() / ".token-service-url"
+            if config_file.exists():
+                token_service_url = config_file.read_text().strip()
+
+        if not token_service_url:
+            return (
+                False,
+                None,
+                (
+                    "Token service URL not found. Set TOKEN_SERVICE_URL environment "
+                    "variable or ensure .token-service-url file exists."
+                ),
+            )
+
+        # Get identity token for authentication
+        # Try to get identity token
+        # In workspaces, this will use the compute service account
+        credentials, project_id = google.auth.default()  # type: ignore[no-untyped-call]
+
+        # Request an identity token instead of an access token
+        # This is required for Cloud Run authentication
+        if hasattr(credentials, "signer"):
+            # Service account - can create identity tokens
+            now = int(time.time())
+            payload = {
+                "iss": credentials.service_account_email,
+                "sub": credentials.service_account_email,
+                "aud": token_service_url,
+                "iat": now,
+                "exp": now + 3600,
+            }
+            id_token = google_jwt.encode(credentials.signer, payload)  # type: ignore[no-untyped-call]
+        else:
+            # User credentials or other - use gcloud
+            try:
+                result = subprocess.run(
+                    ["gcloud", "auth", "print-identity-token"],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                if result.returncode != 0:
+                    return False, None, f"Failed to get identity token: {result.stderr}"
+                id_token = result.stdout.strip()
+            except Exception as e:
+                return False, None, f"Failed to run gcloud: {str(e)}"
+
+        if not id_token:
+            return False, None, "Failed to get identity token for authentication"
+
+        # Call token service
+        url = f"{token_service_url.rstrip('/')}/generate-token"
+        headers = {
+            "Authorization": f"Bearer {id_token}",
+            "Content-Type": "application/json",
+        }
+        payload = {"github_handle": github_handle}
+
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+
+        if response.status_code != 200:
+            error_data = response.json() if response.content else {}
+            error_msg = error_data.get("message", f"HTTP {response.status_code}")
+            return False, None, f"Token service error: {error_msg}"
+
+        data = response.json()
+        token = data.get("token")
+
+        if not token:
+            return False, None, "No token in service response"
 
         return True, token, None
 
     except Exception as e:
-        return False, None, str(e)
+        return False, None, f"Failed to fetch token from service: {str(e)}"
 
 
 def exchange_custom_token_for_id_token(
@@ -357,6 +434,86 @@ def create_env_file(
     except Exception as e:
         console.print(f"[red]✗ Failed to create .env file:[/red] {e}")
         return False
+
+
+def check_onboarded_status(
+    db: firestore.Client, github_handle: str
+) -> tuple[bool, bool]:
+    """
+    Check if participant is already onboarded.
+
+    Parameters
+    ----------
+    db : firestore.Client
+        Firestore client instance.
+    github_handle : str
+        GitHub handle of the participant.
+
+    Returns
+    -------
+    tuple[bool, bool]
+        Tuple of (success, is_onboarded).
+    """
+    try:
+        doc_ref = db.collection("participants").document(github_handle)
+        doc = doc_ref.get()
+
+        if not doc.exists:
+            return True, False
+
+        data = doc.to_dict()
+        is_onboarded = data.get("onboarded", False) if data else False
+        return True, is_onboarded
+
+    except Exception as e:
+        console.print(f"[yellow]⚠ Failed to check onboarded status:[/yellow] {e}")
+        return False, False
+
+
+def validate_env_file(env_path: Path) -> tuple[bool, list[str]]:
+    """
+    Validate if .env file exists and contains all required keys.
+
+    Parameters
+    ----------
+    env_path : Path
+        Path to the .env file.
+
+    Returns
+    -------
+    tuple[bool, list[str]]
+        Tuple of (is_complete, missing_keys).
+    """
+    if not env_path.exists():
+        return False, ["File does not exist"]
+
+    required_keys = [
+        "OPENAI_API_KEY",
+        "EMBEDDING_BASE_URL",
+        "EMBEDDING_API_KEY",
+        "LANGFUSE_SECRET_KEY",
+        "LANGFUSE_PUBLIC_KEY",
+        "LANGFUSE_HOST",
+        "WEAVIATE_HTTP_HOST",
+        "WEAVIATE_GRPC_HOST",
+        "WEAVIATE_API_KEY",
+    ]
+
+    try:
+        with open(env_path) as f:
+            content = f.read()
+
+        missing_keys = []
+        for key in required_keys:
+            # Check if key exists and has a non-empty value
+            if f'{key}=""' in content or key not in content:
+                missing_keys.append(key)
+
+        return len(missing_keys) == 0, missing_keys
+
+    except Exception as e:
+        console.print(f"[yellow]⚠ Failed to validate .env file:[/yellow] {e}")
+        return False, [str(e)]
 
 
 def update_onboarded_status(
