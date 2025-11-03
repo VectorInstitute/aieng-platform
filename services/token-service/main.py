@@ -57,8 +57,20 @@ def verify_service_account_identity() -> str | None:
         Service account or user email if verified, None otherwise.
     """
     try:
-        # Cloud Run validates the Authorization header before reaching our app
-        # If we get here, the token is valid - we can safely decode it
+        # First, try to get email from Cloud Run's injected header
+        # Format: "accounts.google.com:service-account@project.iam.gserviceaccount.com"
+        goog_email_header = request.headers.get("X-Goog-Authenticated-User-Email", "")
+        if goog_email_header:
+            # Strip the prefix if present
+            if ":" in goog_email_header:
+                email = goog_email_header.split(":", 1)[1]
+            else:
+                email = goog_email_header
+            return email
+
+        logger.warning("X-Goog-Authenticated-User-Email header not found")
+
+        # Fallback: try to extract from token
         auth_header = request.headers.get("Authorization", "")
 
         if not auth_header or not auth_header.lower().startswith("bearer "):
@@ -71,17 +83,18 @@ def verify_service_account_identity() -> str | None:
         # so we don't need to verify signature)
         decoded = jwt.decode(token, options={"verify_signature": False})
 
-        # Extract email from token
-        # For service accounts: email field
-        # For user accounts: email field
+        # Extract email from token (user accounts have this, service accounts may not)
         email = decoded.get("email")
 
-        if not email:
-            logger.warning(f"No email in token. Token claims: {list(decoded.keys())}")
-            return None
+        if email:
+            return email
 
-        logger.info(f"Authenticated user: {email}")
-        return email
+        # For service accounts without email claim, we accept any authenticated caller
+        # since Cloud Run IAM has already validated the token
+        # Return a placeholder that indicates authentication succeeded
+        # The actual authorization happens in get_github_handle_from_workspace_sa
+        sub = decoded.get("sub")
+        return f"service-account:{sub}"
 
     except Exception as e:
         logger.error(f"Failed to verify service account: {e}")
@@ -125,7 +138,6 @@ def get_github_handle_from_workspace_sa(service_account_email: str) -> str | Non
             logger.warning(f"Participant {github_handle} not found in Firestore")
             return None
 
-        logger.info(f"Found participant: {github_handle}")
         return github_handle
 
     except Exception as e:
@@ -155,7 +167,6 @@ def generate_custom_token(github_handle: str) -> tuple[bool, str | None, str | N
 
         # Token is returned as bytes, decode to string
         token_str = custom_token.decode("utf-8")
-        logger.info(f"Generated custom token for {github_handle}")
 
         return True, token_str, None
 
