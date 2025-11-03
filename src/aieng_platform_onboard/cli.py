@@ -15,16 +15,19 @@ from pathlib import Path
 from typing import Any
 
 from rich.panel import Panel
+from rich.table import Table
 
 from aieng_platform_onboard.utils import (
     check_onboarded_status,
     console,
     create_env_file,
     fetch_token_from_service,
+    get_all_participants_with_status,
     get_github_user,
     get_global_keys,
     get_participant_data,
     get_team_data,
+    initialize_firestore_admin,
     initialize_firestore_with_token,
     update_onboarded_status,
     validate_env_file,
@@ -258,6 +261,121 @@ def _setup_environment(
     return output_path
 
 
+def display_onboarding_status_report(gcp_project: str) -> int:
+    """
+    Display onboarding status report for all participants.
+
+    This function is for admin use only and requires proper GCP service
+    account credentials. It fetches all participants from Firestore and
+    displays their onboarding status in a table.
+
+    Parameters
+    ----------
+    gcp_project : str
+        GCP project ID.
+
+    Returns
+    -------
+    int
+        Exit code (0 for success, 1 for failure).
+    """
+    console.print(
+        Panel.fit(
+            "[bold cyan]Onboarding Status Report[/bold cyan]\n"
+            "Admin view of all participant onboarding status",
+            border_style="cyan",
+        )
+    )
+
+    # Initialize Firestore with admin credentials
+    console.print("\n[cyan]Connecting to Firestore with admin credentials...[/cyan]")
+    try:
+        db = initialize_firestore_admin(project_id=gcp_project)
+        console.print("[green]✓ Connected to Firestore[/green]\n")
+    except Exception as e:
+        console.print(
+            f"[red]✗ Failed to connect to Firestore:[/red]\n"
+            f"  {e}\n\n"
+            "[yellow]This command requires admin (service account) credentials.[/yellow]\n"
+            "[dim]Ensure you are authenticated with proper GCP permissions:[/dim]\n"
+            "  gcloud auth application-default login\n"
+            "  [dim]or have GOOGLE_APPLICATION_CREDENTIALS set[/dim]"
+        )
+        return 1
+
+    # Fetch all participants
+    console.print("[cyan]Fetching participant data...[/cyan]")
+    try:
+        participants = get_all_participants_with_status(db)
+        console.print(f"[green]✓ Found {len(participants)} participants[/green]\n")
+    except Exception as e:
+        console.print(f"[red]✗ Failed to fetch participant data:[/red] {e}")
+        return 1
+
+    if not participants:
+        console.print(
+            Panel.fit(
+                "[yellow]No participants found in Firestore[/yellow]\n\n"
+                "[dim]Use admin scripts to add participants first[/dim]",
+                border_style="yellow",
+            )
+        )
+        return 0
+
+    # Create and display status table
+    table = Table(
+        title="Participant Onboarding Status",
+        show_header=True,
+        header_style="bold cyan",
+        show_lines=True,
+    )
+    table.add_column("GitHub Handle", style="yellow", no_wrap=True)
+    table.add_column("Team Name", style="blue")
+    table.add_column("Status", justify="center")
+
+    # Count onboarded vs total
+    onboarded_count = 0
+
+    for participant in participants:
+        github_handle = participant["github_handle"]
+        team_name = participant["team_name"]
+        is_onboarded = participant["onboarded"]
+
+        if is_onboarded:
+            onboarded_count += 1
+            status = "[green]✓ Onboarded[/green]"
+        else:
+            status = "[red]✗ Not Onboarded[/red]"
+
+        table.add_row(github_handle, team_name, status)
+
+    console.print(table)
+    console.print()
+
+    # Display summary
+    total_count = len(participants)
+    not_onboarded_count = total_count - onboarded_count
+    percentage = (onboarded_count / total_count * 100) if total_count > 0 else 0
+
+    summary_text = (
+        f"[bold]Onboarding Summary[/bold]\n\n"
+        f"Total Participants: [cyan]{total_count}[/cyan]\n"
+        f"Onboarded: [green]{onboarded_count}[/green]\n"
+        f"Not Onboarded: [red]{not_onboarded_count}[/red]\n"
+        f"Completion Rate: [yellow]{percentage:.1f}%[/yellow]"
+    )
+
+    console.print(
+        Panel.fit(
+            summary_text,
+            border_style="cyan",
+            title="Summary",
+        )
+    )
+
+    return 0
+
+
 def _run_tests_and_finalize(
     db: Any, github_user: str, skip_test: bool, test_script: str
 ) -> bool:
@@ -340,7 +458,6 @@ def main() -> int:  # noqa: PLR0911
     parser.add_argument(
         "--bootcamp-name",
         type=str,
-        required=True,
         help="Name of the bootcamp (e.g., fall-2025)",
     )
     parser.add_argument(
@@ -363,7 +480,6 @@ def main() -> int:  # noqa: PLR0911
     parser.add_argument(
         "--test-script",
         type=str,
-        required=True,
         help="Path to integration test script",
     )
     parser.add_argument(
@@ -376,8 +492,23 @@ def main() -> int:  # noqa: PLR0911
         action="store_true",
         help="Force re-onboarding even if already onboarded",
     )
+    parser.add_argument(
+        "--admin-status-report",
+        action="store_true",
+        help="Display onboarding status for all participants (admin only, requires service account credentials)",
+    )
 
     args = parser.parse_args()
+
+    # Handle admin status report (early return)
+    if args.admin_status_report:
+        return display_onboarding_status_report(args.gcp_project)
+
+    # Validate required arguments for normal onboarding flow
+    if not args.bootcamp_name:
+        parser.error("--bootcamp-name is required for participant onboarding")
+    if not args.test_script:
+        parser.error("--test-script is required for participant onboarding")
 
     # Print header
     console.print(

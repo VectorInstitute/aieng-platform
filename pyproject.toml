@@ -1,6 +1,6 @@
 [project]
 name = "aieng-platform-onboard"
-version = "0.3.2"
+version = "0.3.3"
 description = "CLI tool for onboarding participants to AI Engineering bootcamps"
 readme = "README.md"
 authors = [{name = "Vector AI Engineering", email = "ai_engineering@vectorinstitute.ai"}]
@@ -16,6 +16,7 @@ dependencies = [
     "requests>=2.31.0",
     "python-dotenv>=1.0.0",
     "rich>=13.0.0",
+    "pandas>=2.3.3",
 ]
 
 [project.scripts]
