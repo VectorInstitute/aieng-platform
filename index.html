@@ -448,24 +448,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#requirements" class="md-nav__link">
-    <span class="md-ellipsis">
-      Requirements
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Installation
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -619,24 +601,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#requirements" class="md-nav__link">
-    <span class="md-ellipsis">
-      Requirements
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Installation
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -666,9 +630,9 @@
 <img alt="GitHub License" src="https://img.shields.io/github/license/VectorInstitute/aieng-platform" /></p>
 <p>Infrastructure and tooling for AI Engineering bootcamps, providing secure, isolated development environments and automated participant onboarding.</p>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
-<p>This platform consists of two main components:</p>
+<p>This platform consists of the following components:</p>
 <ol>
-<li><strong>Coder Deployment</strong> - Containerized development environments on GCP</li>
+<li><strong>Coder Deployment</strong> - Containerized development environments supported by <a href="https://coder.com">Coder</a></li>
 <li><strong>Participant Onboarding System</strong> - Secure, automated participant onboarding</li>
 </ol>
 <hr />
@@ -690,10 +654,12 @@
 <h2 id="2-participant-onboarding-system">2. Participant Onboarding System<a class="headerlink" href="#2-participant-onboarding-system" title="Permanent link">&para;</a></h2>
 <p>Automated system for securely distributing team-specific API keys to bootcamp participants using Firebase Authentication and Firestore.</p>
 <h3 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h3>
-<p><strong>Secure Authentication</strong> - Firebase custom tokens with per-participant access
-<strong>Team Isolation</strong> - Firestore security rules enforce team-level data separation
-<strong>Automated Onboarding</strong> - One-command setup for participants
-<strong>API Key Management</strong> - Automated generation and distribution of:</p>
+<ul>
+<li><strong>Secure Authentication</strong> - Firebase custom tokens with per-participant access</li>
+<li><strong>Team Isolation</strong> - Firestore security rules enforce team-level data separation</li>
+<li><strong>Automated Onboarding</strong> - One-command setup for participants</li>
+<li><strong>API Key Management</strong> - Automated generation and distribution of API keys</li>
+</ul>
 <h3 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌─────────────────────────────────────────────────────────────────┐
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│                          Admin Phase                            │
@@ -712,25 +678,6 @@
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│  4. Creates .env file with all credentials                      │
 </span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│  5. Runs integration tests to verify keys, marks onboard status │
 </span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>└─────────────────────────────────────────────────────────────────┘
-</span></code></pre></div>
-<h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Python 3.12+</li>
-<li><code>uv</code> package manager</li>
-<li>GCP project with Firestore and Secret Manager enabled</li>
-<li>Firebase project with Authentication enabled</li>
-<li>Appropriate GCP permissions (see admin guide)</li>
-</ul>
-<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Clone repository</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>git<span class="w"> </span>clone<span class="w"> </span>&lt;repository-url&gt;
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nb">cd</span><span class="w"> </span>aieng-platform
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># Install dependencies</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>uv<span class="w"> </span>sync
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1"># Authenticate with GCP</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>gcloud<span class="w"> </span>auth<span class="w"> </span>application-default<span class="w"> </span>login
 </span></code></pre></div>
 <hr />
 
