@@ -557,3 +557,90 @@ def update_onboarded_status(
 
     except Exception as e:
         return False, str(e)
+
+
+def initialize_firestore_admin(
+    project_id: str = FIRESTORE_PROJECT_ID,
+    database_id: str = FIRESTORE_DATABASE_ID,
+) -> firestore.Client:
+    """
+    Initialize Firestore client with admin (service account) credentials.
+
+    This function uses default Google Cloud credentials, typically a service
+    account, to connect to Firestore with full admin access. This bypasses
+    security rules and should only be used by authorized administrators.
+
+    Parameters
+    ----------
+    project_id : str, optional
+        GCP project ID, by default FIRESTORE_PROJECT_ID.
+    database_id : str, optional
+        Firestore database ID, by default FIRESTORE_DATABASE_ID.
+
+    Returns
+    -------
+    firestore.Client
+        Authenticated Firestore client with admin access.
+
+    Raises
+    ------
+    Exception
+        If initialization fails or credentials are not available.
+    """
+    try:
+        return firestore.Client(project=project_id, database=database_id)
+    except Exception as e:
+        raise Exception(
+            f"Failed to initialize Firestore admin client: {e}\n"
+            "Ensure you have proper GCP service account credentials configured."
+        ) from e
+
+
+def get_all_participants_with_status(db: firestore.Client) -> list[dict[str, Any]]:
+    """
+    Retrieve all participants with their onboarding status.
+
+    This function fetches all participant documents from Firestore and
+    returns them with their GitHub handle, team name, and onboarding status.
+
+    Parameters
+    ----------
+    db : firestore.Client
+        Firestore client instance with admin access.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        List of participant data dictionaries containing:
+        - github_handle: GitHub username
+        - team_name: Assigned team name
+        - onboarded: Boolean onboarding status
+        - onboarded_at: Timestamp of onboarding (if onboarded)
+
+    Raises
+    ------
+    Exception
+        If fetching participant data fails.
+    """
+    try:
+        participants_ref = db.collection("participants")
+        participants = []
+
+        for doc in participants_ref.stream():
+            participant_data = doc.to_dict()
+            if participant_data:
+                participants.append(
+                    {
+                        "github_handle": doc.id,
+                        "team_name": participant_data.get("team_name", "N/A"),
+                        "onboarded": participant_data.get("onboarded", False),
+                        "onboarded_at": participant_data.get("onboarded_at"),
+                    }
+                )
+
+        # Sort by team name, then by github handle
+        participants.sort(key=lambda x: (x["team_name"], x["github_handle"]))
+        return participants
+
+    except Exception as e:
+        raise Exception(f"Failed to fetch participant data: {e}") from e
