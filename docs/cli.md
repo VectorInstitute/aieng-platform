@@ -183,10 +183,3 @@ source .env
   ```
 - Or set `GOOGLE_APPLICATION_CREDENTIALS` to service account key path
 - Verify you have Firestore read access for the project
-
-## Support
-
-For issues or questions:
-- Contact your bootcamp administrator
-- Check existing .env file: `cat .env`
-- Re-run with `--force` to regenerate configuration
