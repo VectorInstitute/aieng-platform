@@ -407,7 +407,7 @@ def create_env_file(
         env_content += (
             f'LANGFUSE_PUBLIC_KEY="{team_data.get("langfuse_public_key", "")}"\n'
         )
-        env_content += f'LANGFUSE_HOST="{team_data.get("langfuse_url", "")}"\n\n'
+        env_content += f'LANGFUSE_HOST="{global_keys.get("LANGFUSE_HOST", "")}"\n\n'
 
         env_content += "# Web Search\n"
         env_content += (
