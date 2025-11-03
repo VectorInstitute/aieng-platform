@@ -56,21 +56,19 @@ Automated system for securely distributing team-specific API keys to bootcamp pa
 ┌─────────────────────────────────────────────────────────────────┐
 │                          Admin Phase                            │
 ├─────────────────────────────────────────────────────────────────┤
-│  1. Setup participants and teams in Firestore                   │
-│  2. Generate team-specific API keys                             │
-│  3. Setup shared keys                                           │
-│  4. Generate Firebase authentication tokens                     │
-│  5. Deploy Firestore security rules                             │
+│  1. Setup teams and participants in Firestore                   │
+│  2. Generate team-specific API keys and shared keys             │
+│  3. Add users to github AI-Engineering-Platform org             │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │                       Participant Phase                         │
 ├─────────────────────────────────────────────────────────────────┤
 │  1. Run onboarding script in Coder workspace                    │
-│  2. Script authenticates using Firebase custom token            │
-│  3. Fetch team-specific API keys (security rules enforced)      │
-│  4. Create .env file with all credentials                       │
-│  5. Run integration tests to verify keys                        │
+│  2. Script authenticates using token server                     │
+│  3. Fetches team-specific API keys (security rules enforced)    │
+│  4. Creates .env file with all credentials                      │
+│  5. Runs integration tests to verify keys, marks onboard status │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
