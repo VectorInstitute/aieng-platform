@@ -11,6 +11,7 @@ them as onboarded.
 import argparse
 import subprocess
 import sys
+from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,21 @@ from aieng_platform_onboard.utils import (
     update_onboarded_status,
     validate_env_file,
 )
+
+
+def get_version() -> str:
+    """
+    Get the installed version of the package.
+
+    Returns
+    -------
+    str
+        Version string from package metadata.
+    """
+    try:
+        return version("aieng-platform-onboard")
+    except Exception:
+        return "unknown"
 
 
 def run_integration_test(test_script: Path) -> tuple[bool, str]:
@@ -454,6 +470,12 @@ def main() -> int:  # noqa: PLR0911
     parser = argparse.ArgumentParser(
         description="Bootcamp participant onboarding script",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {get_version()}",
+        help="Show version number and exit",
     )
     parser.add_argument(
         "--bootcamp-name",

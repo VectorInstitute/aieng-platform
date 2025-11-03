@@ -31,3 +31,4 @@ terraform.tfvars
 
 .coder
 keys/
+.coverage
