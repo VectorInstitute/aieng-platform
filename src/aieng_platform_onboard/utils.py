@@ -407,7 +407,12 @@ def create_env_file(
         env_content += (
             f'LANGFUSE_PUBLIC_KEY="{team_data.get("langfuse_public_key", "")}"\n'
         )
-        env_content += f'LANGFUSE_HOST="{global_keys.get("LANGFUSE_HOST", "")}"\n\n'
+        env_content += f'LANGFUSE_HOST="{team_data.get("langfuse_url", "")}"\n\n'
+
+        env_content += "# Web Search\n"
+        env_content += (
+            f'WEB_SEARCH_API_KEY="{team_data.get("web_search_api_key", "")}"\n\n'
+        )
 
         env_content += "# Weaviate\n"
         env_content += (
@@ -499,6 +504,7 @@ def validate_env_file(env_path: Path) -> tuple[bool, list[str]]:
         "LANGFUSE_SECRET_KEY",
         "LANGFUSE_PUBLIC_KEY",
         "LANGFUSE_HOST",
+        "WEB_SEARCH_API_KEY",
         "WEAVIATE_HTTP_HOST",
         "WEAVIATE_GRPC_HOST",
         "WEAVIATE_API_KEY",
