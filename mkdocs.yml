@@ -27,6 +27,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - User Guide: user_guide.md
+  - CLI: cli.md
 plugins:
   - search
   - mkdocstrings:
