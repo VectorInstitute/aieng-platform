@@ -14,9 +14,9 @@ Infrastructure and tooling for AI Engineering bootcamps, providing secure, isola
 
 ## Overview
 
-This platform consists of two main components:
+This platform consists of the following components:
 
-1. **Coder Deployment** - Containerized development environments on GCP
+1. **Coder Deployment** - Containerized development environments supported by [Coder](https://coder.com)
 2. **Participant Onboarding System** - Secure, automated participant onboarding
 
 ---
@@ -45,10 +45,10 @@ Automated system for securely distributing team-specific API keys to bootcamp pa
 
 ### Features
 
-**Secure Authentication** - Firebase custom tokens with per-participant access
-**Team Isolation** - Firestore security rules enforce team-level data separation
-**Automated Onboarding** - One-command setup for participants
-**API Key Management** - Automated generation and distribution of:
+- **Secure Authentication** - Firebase custom tokens with per-participant access
+- **Team Isolation** - Firestore security rules enforce team-level data separation
+- **Automated Onboarding** - One-command setup for participants
+- **API Key Management** - Automated generation and distribution of API keys
 
 ### Architecture
 
@@ -70,28 +70,6 @@ Automated system for securely distributing team-specific API keys to bootcamp pa
 │  4. Creates .env file with all credentials                      │
 │  5. Runs integration tests to verify keys, marks onboard status │
 └─────────────────────────────────────────────────────────────────┘
-```
-
-## Requirements
-
-- Python 3.12+
-- `uv` package manager
-- GCP project with Firestore and Secret Manager enabled
-- Firebase project with Authentication enabled
-- Appropriate GCP permissions (see admin guide)
-
-## Installation
-
-```bash
-# Clone repository
-git clone <repository-url>
-cd aieng-platform
-
-# Install dependencies
-uv sync
-
-# Authenticate with GCP
-gcloud auth application-default login
 ```
 
 ---
