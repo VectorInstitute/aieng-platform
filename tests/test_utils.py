@@ -7,6 +7,7 @@ from unittest.mock import Mock
 
 import pytest
 from google.cloud import firestore
+from rich.console import Console
 
 from aieng_platform_onboard.utils import (
     check_onboarded_status,
@@ -14,6 +15,7 @@ from aieng_platform_onboard.utils import (
     exchange_custom_token_for_id_token,
     fetch_token_from_service,
     get_all_participants_with_status,
+    get_console,
     get_github_user,
     get_global_keys,
     get_participant_data,
@@ -23,6 +25,21 @@ from aieng_platform_onboard.utils import (
     update_onboarded_status,
     validate_env_file,
 )
+
+
+class TestGetConsole:
+    """Tests for get_console function."""
+
+    def test_get_console_returns_console_instance(self) -> None:
+        """Test that get_console returns a Console instance."""
+        console = get_console()
+        assert isinstance(console, Console)
+
+    def test_get_console_returns_same_instance(self) -> None:
+        """Test that get_console returns the same global instance."""
+        console1 = get_console()
+        console2 = get_console()
+        assert console1 is console2
 
 
 class TestGetGithubUser:
@@ -96,9 +113,214 @@ class TestFetchTokenFromService:
         assert error is None
         mock_requests_post.assert_called_once()
 
+    def test_fetch_token_from_config_file(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_requests_post: Mock,
+        tmp_path: Path,
+    ) -> None:
+        """Test token fetch reading service URL from config file."""
+        monkeypatch.delenv("TOKEN_SERVICE_URL", raising=False)
+
+        # Create config file
+        config_file = tmp_path / ".token-service-url"
+        config_file.write_text("https://token-service-from-file.example.com")
+
+        # Mock Path.home() to return tmp_path
+        monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+
+        # Mock google.auth.default
+        mock_credentials = Mock()
+        mock_credentials.service_account_email = "test@example.iam.gserviceaccount.com"
+        mock_credentials.signer = Mock()
+        monkeypatch.setattr(
+            "google.auth.default", lambda: (mock_credentials, "test-project")
+        )
+        monkeypatch.setattr(
+            "google.auth.jwt.encode", lambda signer, payload: "test-id-token"
+        )
+
+        mock_requests_post.return_value.status_code = 200
+        mock_requests_post.return_value.json.return_value = {"token": "test-token"}
+        mock_requests_post.return_value.content = b'{"token": "test-token"}'
+
+        success, token, error = fetch_token_from_service("test-user")
+
+        assert success is True
+        assert token == "test-token"
+        assert error is None
+
+    def test_fetch_token_with_user_credentials(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_requests_post: Mock,
+    ) -> None:
+        """Test token fetch with user credentials using gcloud."""
+        monkeypatch.setenv("TOKEN_SERVICE_URL", "https://token-service.example.com")
+
+        # Mock google.auth.default to return user credentials (no signer)
+        mock_credentials = Mock(spec=[])  # No signer attribute
+
+        monkeypatch.setattr(
+            "google.auth.default", lambda: (mock_credentials, "test-project")
+        )
+
+        # Mock subprocess.run for gcloud command
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_result.stdout = "gcloud-identity-token"
+        mock_result.stderr = ""
+
+        mock_subprocess = Mock(return_value=mock_result)
+        monkeypatch.setattr("subprocess.run", mock_subprocess)
+
+        mock_requests_post.return_value.status_code = 200
+        mock_requests_post.return_value.json.return_value = {"token": "test-token"}
+        mock_requests_post.return_value.content = b'{"token": "test-token"}'
+
+        success, token, error = fetch_token_from_service("test-user")
+
+        assert success is True
+        assert token == "test-token"
+        assert error is None
+        mock_subprocess.assert_called_once()
+
+    def test_fetch_token_gcloud_failure(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test token fetch when gcloud command fails."""
+        monkeypatch.setenv("TOKEN_SERVICE_URL", "https://token-service.example.com")
+
+        # Mock google.auth.default to return user credentials
+        mock_credentials = Mock(spec=[])
+
+        monkeypatch.setattr(
+            "google.auth.default", lambda: (mock_credentials, "test-project")
+        )
+
+        # Mock subprocess.run to fail
+        mock_result = Mock()
+        mock_result.returncode = 1
+        mock_result.stdout = ""
+        mock_result.stderr = "gcloud auth error"
+
+        mock_subprocess = Mock(return_value=mock_result)
+        monkeypatch.setattr("subprocess.run", mock_subprocess)
+
+        success, token, error = fetch_token_from_service("test-user")
+
+        assert success is False
+        assert token is None
+        assert "Failed to get identity token" in str(error)
+
+    def test_fetch_token_gcloud_exception(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test token fetch when gcloud command raises exception."""
+        monkeypatch.setenv("TOKEN_SERVICE_URL", "https://token-service.example.com")
+
+        # Mock google.auth.default
+        mock_credentials = Mock(spec=[])
+
+        monkeypatch.setattr(
+            "google.auth.default", lambda: (mock_credentials, "test-project")
+        )
+
+        # Mock subprocess.run to raise exception
+        def mock_subprocess_error(*args, **kwargs):
+            raise Exception("subprocess error")
+
+        monkeypatch.setattr("subprocess.run", mock_subprocess_error)
+
+        success, token, error = fetch_token_from_service("test-user")
+
+        assert success is False
+        assert token is None
+        assert "Failed to run gcloud" in str(error)
+
+    def test_fetch_token_no_id_token(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test token fetch when identity token is empty."""
+        monkeypatch.setenv("TOKEN_SERVICE_URL", "https://token-service.example.com")
+
+        # Mock google.auth.default
+        mock_credentials = Mock(spec=[])
+
+        monkeypatch.setattr(
+            "google.auth.default", lambda: (mock_credentials, "test-project")
+        )
+
+        # Mock subprocess.run to return empty token
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_result.stdout = "   \n  "  # Whitespace that strips to empty
+        mock_result.stderr = ""
+
+        monkeypatch.setattr("subprocess.run", Mock(return_value=mock_result))
+
+        success, token, error = fetch_token_from_service("test-user")
+
+        assert success is False
+        assert token is None
+        assert "Failed to get identity token for authentication" in str(error)
+
+    def test_fetch_token_no_token_in_response(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_requests_post: Mock,
+    ) -> None:
+        """Test token fetch when service response has no token."""
+        monkeypatch.setenv("TOKEN_SERVICE_URL", "https://token-service.example.com")
+
+        # Mock google.auth.default
+        mock_credentials = Mock()
+        mock_credentials.service_account_email = "test@example.iam.gserviceaccount.com"
+        mock_credentials.signer = Mock()
+        monkeypatch.setattr(
+            "google.auth.default", lambda: (mock_credentials, "test-project")
+        )
+        monkeypatch.setattr(
+            "google.auth.jwt.encode", lambda signer, payload: "test-id-token"
+        )
+
+        mock_requests_post.return_value.status_code = 200
+        mock_requests_post.return_value.json.return_value = {}  # No token
+        mock_requests_post.return_value.content = b"{}"
+
+        success, token, error = fetch_token_from_service("test-user")
+
+        assert success is False
+        assert token is None
+        assert "No token in service response" in str(error)
+
+    def test_fetch_token_generic_exception(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_requests_post: Mock,
+    ) -> None:
+        """Test token fetch with generic exception."""
+        monkeypatch.setenv("TOKEN_SERVICE_URL", "https://token-service.example.com")
+
+        # Mock google.auth.default to raise exception
+        def mock_auth_error():
+            raise Exception("Auth error")
+
+        monkeypatch.setattr("google.auth.default", mock_auth_error)
+
+        success, token, error = fetch_token_from_service("test-user")
+
+        assert success is False
+        assert token is None
+        assert "Failed to fetch token from service" in str(error)
+
     def test_fetch_token_no_service_url(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test token fetch failure when service URL is not configured."""
         monkeypatch.delenv("TOKEN_SERVICE_URL", raising=False)
+        monkeypatch.setattr("pathlib.Path.home", lambda: Path("/nonexistent"))
 
         success, token, error = fetch_token_from_service("test-user")
 
@@ -167,6 +389,33 @@ class TestExchangeCustomTokenForIdToken:
         assert id_token is None
         assert "Invalid token" in str(error)
 
+    def test_exchange_token_no_id_token_in_response(
+        self, mock_requests_post: Mock
+    ) -> None:
+        """Test token exchange when response has no ID token."""
+        mock_requests_post.return_value.status_code = 200
+        mock_requests_post.return_value.json.return_value = {}  # No idToken
+
+        success, id_token, error = exchange_custom_token_for_id_token(
+            "custom-token", "test-api-key"
+        )
+
+        assert success is False
+        assert id_token is None
+        assert "No ID token in response" in str(error)
+
+    def test_exchange_token_generic_exception(self, mock_requests_post: Mock) -> None:
+        """Test token exchange with generic exception."""
+        mock_requests_post.side_effect = Exception("Network error")
+
+        success, id_token, error = exchange_custom_token_for_id_token(
+            "custom-token", "test-api-key"
+        )
+
+        assert success is False
+        assert id_token is None
+        assert "Network error" in str(error)
+
 
 class TestInitializeFirestoreWithToken:
     """Tests for initialize_firestore_with_token function."""
@@ -214,6 +463,28 @@ class TestInitializeFirestoreWithToken:
 
         with pytest.raises(Exception, match="Firebase Web API key required"):
             initialize_firestore_with_token("custom-token", "test-project", "test-db")
+
+    def test_initialize_firestore_exchange_failure(
+        self, monkeypatch: pytest.MonkeyPatch, mock_console: Mock
+    ) -> None:
+        """Test Firestore initialization when token exchange fails."""
+        monkeypatch.setenv("FIREBASE_WEB_API_KEY", "test-api-key")
+
+        # Mock exchange function to fail
+        def mock_exchange_fail(
+            token: str, api_key: str
+        ) -> tuple[bool, str | None, str | None]:
+            return False, None, "Exchange failed"
+
+        monkeypatch.setattr(
+            "aieng_platform_onboard.utils.exchange_custom_token_for_id_token",
+            mock_exchange_fail,
+        )
+
+        with pytest.raises(Exception, match="Failed to exchange custom token"):
+            initialize_firestore_with_token(
+                "custom-token", "test-project", "test-db", "test-api-key"
+            )
 
 
 class TestInitializeFirestoreAdmin:
@@ -289,6 +560,17 @@ class TestGetParticipantData:
 
         assert result is None
 
+    def test_get_participant_data_exception(
+        self, mock_firestore_client: Mock, mock_console: Mock
+    ) -> None:
+        """Test participant data retrieval with exception."""
+        mock_firestore_client.collection.side_effect = Exception("Database error")
+
+        result = get_participant_data(mock_firestore_client, "test-user")
+
+        assert result is None
+        mock_console.print.assert_called()
+
 
 class TestGetTeamData:
     """Tests for get_team_data function."""
@@ -330,6 +612,17 @@ class TestGetTeamData:
 
         assert result is None
 
+    def test_get_team_data_exception(
+        self, mock_firestore_client: Mock, mock_console: Mock
+    ) -> None:
+        """Test team data retrieval with exception."""
+        mock_firestore_client.collection.side_effect = Exception("Database error")
+
+        result = get_team_data(mock_firestore_client, "test-team")
+
+        assert result is None
+        mock_console.print.assert_called()
+
 
 class TestGetGlobalKeys:
     """Tests for get_global_keys function."""
@@ -353,6 +646,34 @@ class TestGetGlobalKeys:
         result = get_global_keys(mock_firestore_client)
 
         assert result == sample_global_keys
+
+    def test_get_global_keys_not_found(self, mock_firestore_client: Mock) -> None:
+        """Test global keys retrieval when document not found."""
+        mock_doc = Mock()
+        mock_doc.exists = False
+
+        mock_ref = Mock()
+        mock_ref.get.return_value = mock_doc
+
+        mock_collection = Mock()
+        mock_collection.document.return_value = mock_ref
+
+        mock_firestore_client.collection.return_value = mock_collection
+
+        result = get_global_keys(mock_firestore_client)
+
+        assert result is None
+
+    def test_get_global_keys_exception(
+        self, mock_firestore_client: Mock, mock_console: Mock
+    ) -> None:
+        """Test global keys retrieval with exception."""
+        mock_firestore_client.collection.side_effect = Exception("Database error")
+
+        result = get_global_keys(mock_firestore_client)
+
+        assert result is None
+        mock_console.print.assert_called()
 
 
 class TestGetAllParticipantsWithStatus:
