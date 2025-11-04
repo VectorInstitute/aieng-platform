@@ -363,6 +363,90 @@ def get_global_keys(db: firestore.Client) -> dict[str, Any] | None:
         return None
 
 
+def _add_embedding_section(
+    key_list: list[str], filtered_global_keys: dict[str, Any]
+) -> str:
+    """Build embedding section of .env file."""
+    if not key_list:
+        return ""
+    content = "# Embedding model\n"
+    for key in sorted(key_list):
+        content += f'{key}="{filtered_global_keys[key]}"\n'
+    content += "\n"
+    return content
+
+
+def _add_langfuse_section(
+    key_list: list[str],
+    filtered_global_keys: dict[str, Any],
+    team_data: dict[str, Any],
+) -> str:
+    """Build LangFuse section of .env file."""
+    has_team_keys = team_data.get("langfuse_secret_key") or team_data.get(
+        "langfuse_public_key"
+    )
+    if not key_list and not has_team_keys:
+        return ""
+
+    content = "# LangFuse\n"
+    # Team-specific keys first
+    if team_data.get("langfuse_secret_key"):
+        content += f'LANGFUSE_SECRET_KEY="{team_data.get("langfuse_secret_key", "")}"\n'
+    if team_data.get("langfuse_public_key"):
+        content += f'LANGFUSE_PUBLIC_KEY="{team_data.get("langfuse_public_key", "")}"\n'
+    # Then global keys
+    for key in sorted(key_list):
+        content += f'{key}="{filtered_global_keys[key]}"\n'
+    content += "\n"
+    return content
+
+
+def _add_web_search_section(
+    key_list: list[str],
+    filtered_global_keys: dict[str, Any],
+    team_data: dict[str, Any],
+) -> str:
+    """Build Web Search section of .env file."""
+    if not key_list and not team_data.get("web_search_api_key"):
+        return ""
+
+    content = "# Web Search\n"
+    # Global keys first
+    for key in sorted(key_list):
+        content += f'{key}="{filtered_global_keys[key]}"\n'
+    # Then team-specific key
+    if team_data.get("web_search_api_key"):
+        content += f'WEB_SEARCH_API_KEY="{team_data.get("web_search_api_key", "")}"\n'
+    content += "\n"
+    return content
+
+
+def _add_weaviate_section(
+    key_list: list[str], filtered_global_keys: dict[str, Any]
+) -> str:
+    """Build Weaviate section of .env file."""
+    if not key_list:
+        return ""
+    content = "# Weaviate\n"
+    for key in sorted(key_list):
+        content += f'{key}="{filtered_global_keys[key]}"\n'
+    content += "\n"
+    return content
+
+
+def _add_other_keys_section(
+    key_list: list[str], filtered_global_keys: dict[str, Any]
+) -> str:
+    """Build section for other uncategorized keys."""
+    if not key_list:
+        return ""
+    content = "# Other Configuration\n"
+    for key in sorted(key_list):
+        content += f'{key}="{filtered_global_keys[key]}"\n'
+    content += "\n"
+    return content
+
+
 def create_env_file(
     output_path: Path,
     team_data: dict[str, Any],
@@ -386,54 +470,53 @@ def create_env_file(
         True if successful, False otherwise.
     """
     try:
+        # Metadata fields to exclude from .env file
+        metadata_fields = {"created_at", "updated_at"}
+
+        # Filter out metadata fields from global keys
+        filtered_global_keys = {
+            k: v for k, v in global_keys.items() if k not in metadata_fields
+        }
+
+        # Categorize global keys by prefix for organized output
+        key_categories: dict[str, list[str]] = {
+            "EMBEDDING": [],
+            "LANGFUSE": [],
+            "WEAVIATE": [],
+            "WEB_SEARCH": [],
+        }
+        other_keys = []
+
+        for key in filtered_global_keys:
+            categorized = False
+            for prefix, category_list in key_categories.items():
+                if key.startswith(prefix):
+                    category_list.append(key)
+                    categorized = True
+                    break
+            if not categorized:
+                other_keys.append(key)
+
         # Build .env content
         env_content = "#!/bin/bash\n"
         env_content += "# OpenAI-compatible LLM (Gemini)\n"
         env_content += 'OPENAI_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai/"\n'
         env_content += f'OPENAI_API_KEY="{team_data.get("openai_api_key", "")}"\n\n'
 
-        env_content += "# Embedding model\n"
-        env_content += (
-            f'EMBEDDING_BASE_URL="{global_keys.get("EMBEDDING_BASE_URL", "")}"\n'
+        # Add sections using helper functions
+        env_content += _add_embedding_section(
+            key_categories["EMBEDDING"], filtered_global_keys
         )
-        env_content += (
-            f'EMBEDDING_API_KEY="{global_keys.get("EMBEDDING_API_KEY", "")}"\n\n'
+        env_content += _add_langfuse_section(
+            key_categories["LANGFUSE"], filtered_global_keys, team_data
         )
-
-        env_content += "# LangFuse\n"
-        env_content += (
-            f'LANGFUSE_SECRET_KEY="{team_data.get("langfuse_secret_key", "")}"\n'
+        env_content += _add_web_search_section(
+            key_categories["WEB_SEARCH"], filtered_global_keys, team_data
         )
-        env_content += (
-            f'LANGFUSE_PUBLIC_KEY="{team_data.get("langfuse_public_key", "")}"\n'
+        env_content += _add_weaviate_section(
+            key_categories["WEAVIATE"], filtered_global_keys
         )
-        env_content += f'LANGFUSE_HOST="{global_keys.get("LANGFUSE_HOST", "")}"\n\n'
-
-        env_content += "# Web Search\n"
-        env_content += (
-            f'WEB_SEARCH_API_KEY="{team_data.get("web_search_api_key", "")}"\n\n'
-        )
-
-        env_content += "# Weaviate\n"
-        env_content += (
-            f'WEAVIATE_HTTP_HOST="{global_keys.get("WEAVIATE_HTTP_HOST", "")}"\n'
-        )
-        env_content += (
-            f'WEAVIATE_GRPC_HOST="{global_keys.get("WEAVIATE_GRPC_HOST", "")}"\n'
-        )
-        env_content += f'WEAVIATE_API_KEY="{global_keys.get("WEAVIATE_API_KEY", "")}"\n'
-        env_content += (
-            f'WEAVIATE_HTTP_PORT="{global_keys.get("WEAVIATE_HTTP_PORT", "")}"\n'
-        )
-        env_content += (
-            f'WEAVIATE_GRPC_PORT="{global_keys.get("WEAVIATE_GRPC_PORT", "")}"\n'
-        )
-        env_content += (
-            f'WEAVIATE_HTTP_SECURE="{global_keys.get("WEAVIATE_HTTP_SECURE", "")}"\n'
-        )
-        env_content += (
-            f'WEAVIATE_GRPC_SECURE="{global_keys.get("WEAVIATE_GRPC_SECURE", "")}"\n'
-        )
+        env_content += _add_other_keys_section(other_keys, filtered_global_keys)
 
         # Write to file
         with open(output_path, "w") as f:
@@ -497,6 +580,9 @@ def validate_env_file(env_path: Path) -> tuple[bool, list[str]]:
     if not env_path.exists():
         return False, ["File does not exist"]
 
+    # Core required keys that must always be present
+    # Note: This could be made more dynamic by fetching from Firestore,
+    # but we maintain a minimal set here for basic validation
     required_keys = [
         "OPENAI_API_KEY",
         "EMBEDDING_BASE_URL",
@@ -504,6 +590,7 @@ def validate_env_file(env_path: Path) -> tuple[bool, list[str]]:
         "LANGFUSE_SECRET_KEY",
         "LANGFUSE_PUBLIC_KEY",
         "LANGFUSE_HOST",
+        "WEB_SEARCH_BASE_URL",
         "WEB_SEARCH_API_KEY",
         "WEAVIATE_HTTP_HOST",
         "WEAVIATE_GRPC_HOST",
