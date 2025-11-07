@@ -14,6 +14,10 @@ on:
       - uv.lock
       - pyproject.toml
       - '**.ipynb'
+      - '**.ts'
+      - '**.tsx'
+      - '**.js'
+      - '**.jsx'
   pull_request:
     branches:
       - main
@@ -24,6 +28,10 @@ on:
       - uv.lock
       - pyproject.toml
       - '**.ipynb'
+      - '**.ts'
+      - '**.tsx'
+      - '**.js'
+      - '**.jsx'
 
 jobs:
   run-code-check:
