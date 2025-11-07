@@ -28,6 +28,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'onboarded' | 'not_onboarded'>('all');
 
   const fetchData = async () => {
     try {
@@ -94,6 +95,51 @@ export default function Home() {
   }
 
   const { participants, summary } = data;
+
+  // Filter participants based on status
+  const filteredParticipants = participants.filter((participant) => {
+    if (statusFilter === 'onboarded') return participant.onboarded;
+    if (statusFilter === 'not_onboarded') return !participant.onboarded;
+    return true; // 'all'
+  });
+
+  // CSV export function
+  const exportToCSV = () => {
+    const headers = ['#', 'Name', 'GitHub Handle', 'Team Name', 'Status', 'Onboarded At'];
+    const rows = filteredParticipants.map((participant, index) => {
+      const name = participant.first_name && participant.last_name
+        ? `${participant.first_name} ${participant.last_name}`
+        : participant.first_name || participant.last_name || 'N/A';
+      const status = participant.onboarded ? 'Onboarded' : 'Not Onboarded';
+      const onboardedAt = participant.onboarded_at || 'N/A';
+
+      return [
+        index + 1,
+        name,
+        participant.github_handle,
+        participant.team_name,
+        status,
+        onboardedAt
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', `participants_${statusFilter}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4 md:p-8">
@@ -170,6 +216,53 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Filter and Export Controls */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6 animate-slide-up" style={{ animationDelay: '150ms' }}>
+          <div className="flex-1">
+            <label htmlFor="status-filter" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+              Filter by Status
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+              </div>
+              <select
+                id="status-filter"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'onboarded' | 'not_onboarded')}
+                className="w-full sm:w-72 pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium shadow-sm hover:border-slate-300 dark:hover:border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 transition-all duration-200 appearance-none cursor-pointer"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 0.5rem center',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundSize: '1.5em 1.5em'
+                }}
+              >
+                <option value="all">All Participants ({participants.length})</option>
+                <option value="onboarded">Onboarded ({summary.onboarded})</option>
+                <option value="not_onboarded">Not Onboarded ({summary.notOnboarded})</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-end">
+            <button
+              onClick={exportToCSV}
+              className="group relative inline-flex items-center px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 hover:from-emerald-700 hover:via-emerald-700 hover:to-teal-700 text-white font-semibold shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
+            >
+              <svg className="w-5 h-5 mr-2 transition-transform group-hover:translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+              </svg>
+              <span>Export to CSV</span>
+              <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-md text-sm font-bold">
+                {filteredParticipants.length}
+              </span>
+            </button>
+          </div>
+        </div>
+
         {/* Participants Table */}
         <div className="card overflow-hidden animate-slide-up" style={{ animationDelay: '200ms' }}>
           <div className="overflow-x-auto">
@@ -194,7 +287,7 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {participants.map((participant, index) => (
+                {filteredParticipants.map((participant, index) => (
                   <tr
                     key={participant.github_handle}
                     className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
