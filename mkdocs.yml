@@ -26,8 +26,11 @@ markdown_extensions:
       permalink: true
 nav:
   - Home: index.md
-  - User Guide: user_guide.md
-  - CLI: cli.md
+  - CLI Reference: cli.md
+  - Developer Guide:
+      - Overview: developer_guide.md
+      - Infrastructure:
+          - Onboarding Status Web - Load Balancer Setup: onboarding-status-web-load-balancer-setup.md
 plugins:
   - search
   - mkdocstrings:

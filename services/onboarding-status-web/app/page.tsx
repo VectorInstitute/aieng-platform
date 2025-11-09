@@ -33,7 +33,7 @@ export default function Home() {
   const fetchData = async () => {
     try {
       setError(null);
-      const response = await fetch('/api/participants', {
+      const response = await fetch('/onboarding/api/participants', {
         cache: 'no-store'
       });
 
