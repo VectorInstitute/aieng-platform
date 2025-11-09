@@ -23,9 +23,10 @@ wheels/
 # .env
 .env
 
-# Deployment-generated URLs
+# Deployment-generated URLs and backups
 .onboarding-status-url
 .token-service-url
+url-map-backup*.yaml
 
 terraform.tfvars
 *.tfstate
