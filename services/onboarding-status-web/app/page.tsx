@@ -29,11 +29,12 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'onboarded' | 'not_onboarded'>('all');
+  const [roleFilter, setRoleFilter] = useState<'participants' | 'facilitators'>('participants');
 
   const fetchData = async () => {
     try {
       setError(null);
-      const response = await fetch('/onboarding/api/participants', {
+      const response = await fetch(`/onboarding/api/participants?role=${roleFilter}`, {
         cache: 'no-store'
       });
 
@@ -59,7 +60,7 @@ export default function Home() {
     const interval = setInterval(fetchData, 30000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [roleFilter]);
 
   if (loading) {
     return (
@@ -147,10 +148,10 @@ export default function Home() {
         {/* Header */}
         <div className="mb-8 animate-fade-in">
           <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-2">
-            Participant Onboarding Status
+            Onboarding Status
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
-            Track participant onboarding progress in real-time
+            Track technical onboarding progress in real-time
           </p>
           {lastUpdated && (
             <p className="text-sm text-slate-500 dark:text-slate-500 mt-2">
@@ -218,6 +219,34 @@ export default function Home() {
 
         {/* Filter and Export Controls */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6 animate-slide-up" style={{ animationDelay: '150ms' }}>
+          <div className="flex-1">
+            <label htmlFor="role-filter" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+              Filter by Role
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <select
+                id="role-filter"
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value as 'participants' | 'facilitators')}
+                className="w-full sm:w-72 pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium shadow-sm hover:border-slate-300 dark:hover:border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 transition-all duration-200 appearance-none cursor-pointer"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 0.5rem center',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundSize: '1.5em 1.5em'
+                }}
+              >
+                <option value="participants">Participants</option>
+                <option value="facilitators">Facilitators</option>
+              </select>
+            </div>
+          </div>
+
           <div className="flex-1">
             <label htmlFor="status-filter" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
               Filter by Status
