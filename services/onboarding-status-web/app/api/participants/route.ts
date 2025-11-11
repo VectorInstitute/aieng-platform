@@ -1,5 +1,5 @@
 import { Firestore } from '@google-cloud/firestore';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 // Initialize Firestore client
 const getFirestoreClient = () => {
@@ -21,8 +21,12 @@ interface ParticipantData {
   last_name?: string;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Get role filter from query params, default to 'participants'
+    const searchParams = request.nextUrl.searchParams;
+    const role = searchParams.get('role') || 'participants';
+
     const db = getFirestoreClient();
     const participantsRef = db.collection('participants');
     const snapshot = await participantsRef.get();
@@ -33,16 +37,31 @@ export async function GET() {
       const data = doc.data();
       const teamName = data.team_name || 'N/A';
 
-      // Filter out example-team
-      if (teamName !== 'example-team') {
-        participants.push({
-          github_handle: doc.id,
-          team_name: teamName,
-          onboarded: data.onboarded || false,
-          onboarded_at: data.onboarded_at,
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-        });
+      // Filter based on role parameter
+      if (role === 'facilitators') {
+        // Show only facilitators
+        if (teamName === 'facilitators') {
+          participants.push({
+            github_handle: doc.id,
+            team_name: teamName,
+            onboarded: data.onboarded || false,
+            onboarded_at: data.onboarded_at,
+            first_name: data.first_name || '',
+            last_name: data.last_name || '',
+          });
+        }
+      } else {
+        // Default: show only participants (exclude facilitators)
+        if (teamName !== 'facilitators') {
+          participants.push({
+            github_handle: doc.id,
+            team_name: teamName,
+            onboarded: data.onboarded || false,
+            onboarded_at: data.onboarded_at,
+            first_name: data.first_name || '',
+            last_name: data.last_name || '',
+          });
+        }
       }
     });
 
