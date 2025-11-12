@@ -119,7 +119,7 @@ def get_github_handle_from_workspace_sa(service_account_email: str) -> str | Non
     Returns
     -------
     str | None
-        GitHub handle if found, None otherwise.
+        GitHub handle (normalized to lowercase) if found, None otherwise.
     """
     # For now, require github_handle to be passed in request body
     # In production, you could map this via metadata or workspace labels
@@ -129,16 +129,22 @@ def get_github_handle_from_workspace_sa(service_account_email: str) -> str | Non
         logger.warning("github_handle not provided in request")
         return None
 
+    # Normalize GitHub handle to lowercase for case-insensitive matching
+    # GitHub handles are case-insensitive but case-preserving
+    github_handle_normalized = github_handle.lower()
+
     # Verify this participant exists in Firestore
     try:
-        doc_ref = db.collection("participants").document(github_handle)
+        doc_ref = db.collection("participants").document(github_handle_normalized)
         doc = doc_ref.get()
 
         if not doc.exists:
-            logger.warning(f"Participant {github_handle} not found in Firestore")
+            logger.warning(
+                f"Participant {github_handle_normalized} not found in Firestore"
+            )
             return None
 
-        return github_handle
+        return github_handle_normalized
 
     except Exception as e:
         logger.error(f"Failed to verify participant: {e}")
