@@ -70,7 +70,7 @@ def run_integration_test(test_script: Path) -> tuple[bool, str]:
             check=False,
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=120,
         )
 
         if result.returncode == 0:
@@ -78,7 +78,7 @@ def run_integration_test(test_script: Path) -> tuple[bool, str]:
         return False, result.stderr if result.stderr else result.stdout
 
     except subprocess.TimeoutExpired:
-        return False, "Test timed out after 60 seconds"
+        return False, "Test timed out after 120 seconds"
     except Exception as e:
         return False, str(e)
 
