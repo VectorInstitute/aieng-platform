@@ -38,6 +38,26 @@ def get_console() -> Console:
     return console
 
 
+def normalize_github_handle(github_handle: str) -> str:
+    """
+    Normalize GitHub handle to lowercase for case-insensitive matching.
+
+    GitHub handles are case-insensitive but case-preserving. This function
+    ensures consistent lookups in Firestore by normalizing to lowercase.
+
+    Parameters
+    ----------
+    github_handle : str
+        GitHub handle in any case.
+
+    Returns
+    -------
+    str
+        Normalized (lowercase) GitHub handle.
+    """
+    return github_handle.lower()
+
+
 def get_github_user() -> str | None:
     """
     Get GitHub username from environment variable.
@@ -145,7 +165,8 @@ def fetch_token_from_service(  # noqa: PLR0911
             "Authorization": f"Bearer {id_token}",
             "Content-Type": "application/json",
         }
-        payload = {"github_handle": github_handle}
+        # Normalize GitHub handle for case-insensitive matching
+        payload = {"github_handle": normalize_github_handle(github_handle)}
 
         response = requests.post(url, json=payload, headers=headers, timeout=30)
 
@@ -292,7 +313,9 @@ def get_participant_data(
         Participant data or None if not found.
     """
     try:
-        doc_ref = db.collection("participants").document(github_handle)
+        # Normalize GitHub handle for case-insensitive matching
+        github_handle_normalized = normalize_github_handle(github_handle)
+        doc_ref = db.collection("participants").document(github_handle_normalized)
         doc = doc_ref.get()
 
         if not doc.exists:
@@ -548,7 +571,9 @@ def check_onboarded_status(
         Tuple of (success, is_onboarded).
     """
     try:
-        doc_ref = db.collection("participants").document(github_handle)
+        # Normalize GitHub handle for case-insensitive matching
+        github_handle_normalized = normalize_github_handle(github_handle)
+        doc_ref = db.collection("participants").document(github_handle_normalized)
         doc = doc_ref.get()
 
         if not doc.exists:
@@ -633,7 +658,9 @@ def update_onboarded_status(
         Tuple of (success, error_message).
     """
     try:
-        doc_ref = db.collection("participants").document(github_handle)
+        # Normalize GitHub handle for case-insensitive matching
+        github_handle_normalized = normalize_github_handle(github_handle)
+        doc_ref = db.collection("participants").document(github_handle_normalized)
         doc_ref.update(
             {
                 "onboarded": True,
