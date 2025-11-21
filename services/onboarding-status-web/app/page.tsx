@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface Participant {
   github_handle: string;
@@ -9,6 +9,7 @@ interface Participant {
   onboarded_at?: string;
   first_name?: string;
   last_name?: string;
+  github_status?: 'member' | 'pending' | 'not_invited';
 }
 
 interface Summary {
@@ -31,7 +32,7 @@ export default function Home() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'onboarded' | 'not_onboarded'>('all');
   const [roleFilter, setRoleFilter] = useState<'participants' | 'facilitators'>('participants');
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setError(null);
       const response = await fetch(`/onboarding/api/participants?role=${roleFilter}`, {
@@ -43,6 +44,37 @@ export default function Home() {
       }
 
       const result = await response.json();
+
+      // Fetch GitHub status for all participants
+      try {
+        const github_handles = result.participants.map((p: Participant) => p.github_handle);
+        const statusResponse = await fetch('/onboarding/api/github-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ github_handles }),
+          cache: 'no-store'
+        });
+
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          const statusMap = new Map(
+            statusData.statuses.map((s: { github_handle: string; status: string }) => [
+              s.github_handle,
+              s.status
+            ])
+          );
+
+          // Merge GitHub status with participant data
+          result.participants = result.participants.map((p: Participant) => ({
+            ...p,
+            github_status: statusMap.get(p.github_handle) || 'not_invited'
+          }));
+        }
+      } catch (statusErr) {
+        console.warn('Failed to fetch GitHub status:', statusErr);
+        // Continue without GitHub status if it fails
+      }
+
       setData(result);
       setLastUpdated(new Date());
     } catch (err) {
@@ -51,7 +83,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [roleFilter]);
 
   useEffect(() => {
     fetchData();
@@ -60,7 +92,7 @@ export default function Home() {
     const interval = setInterval(fetchData, 30000);
 
     return () => clearInterval(interval);
-  }, [roleFilter]);
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -104,20 +136,72 @@ export default function Home() {
     return true; // 'all'
   });
 
+  // Helper function to render GitHub status badge
+  const renderGitHubStatus = (status?: 'member' | 'pending' | 'not_invited') => {
+    if (!status) {
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400">
+          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          Unknown
+        </span>
+      );
+    }
+
+    switch (status) {
+      case 'member':
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            Member
+          </span>
+        );
+      case 'pending':
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+            <svg className="w-3 h-3 mr-1 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+            </svg>
+            Pending
+          </span>
+        );
+      case 'not_invited':
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            Not Invited
+          </span>
+        );
+    }
+  };
+
   // CSV export function
   const exportToCSV = () => {
-    const headers = ['#', 'Name', 'GitHub Handle', 'Team Name', 'Status', 'Onboarded At'];
+    const headers = ['#', 'Name', 'GitHub Handle', 'GitHub Status', 'Team Name', 'Status', 'Onboarded At'];
     const rows = filteredParticipants.map((participant, index) => {
       const name = participant.first_name && participant.last_name
         ? `${participant.first_name} ${participant.last_name}`
         : participant.first_name || participant.last_name || 'N/A';
       const status = participant.onboarded ? 'Onboarded' : 'Not Onboarded';
       const onboardedAt = participant.onboarded_at || 'N/A';
+      const githubStatus = participant.github_status
+        ? participant.github_status === 'member'
+          ? 'Member'
+          : participant.github_status === 'pending'
+          ? 'Pending'
+          : 'Not Invited'
+        : 'Unknown';
 
       return [
         index + 1,
         name,
         participant.github_handle,
+        githubStatus,
         participant.team_name,
         status,
         onboardedAt
@@ -307,6 +391,9 @@ export default function Home() {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     GitHub Handle
                   </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    GitHub Invite
+                  </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Team Name
                   </th>
@@ -337,6 +424,9 @@ export default function Home() {
                       <span className="text-sm text-slate-600 dark:text-slate-400">
                         {participant.github_handle}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {renderGitHubStatus(participant.github_status)}
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
