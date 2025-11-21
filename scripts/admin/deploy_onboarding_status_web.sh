@@ -12,8 +12,13 @@
 #   --project PROJECT_ID       GCP project ID (default: coderd)
 #   --region REGION           Cloud Run region (default: us-central1)
 #   --service-name NAME       Service name (default: onboarding-status-web)
+#   --github-token TOKEN      GitHub personal access token with read:org scope (required)
 #   --allow-unauthenticated   Allow unauthenticated requests (default: true for dashboards)
 #   --dry-run                 Show commands without executing
+#
+# Environment Variables:
+#   GITHUB_TOKEN             GitHub token (alternative to --github-token flag)
+#   GCP_PROJECT              GCP project ID (alternative to --project flag)
 #
 
 set -euo pipefail
@@ -25,6 +30,7 @@ SERVICE_NAME="onboarding-status-web"
 ALLOW_UNAUTHENTICATED="true"  # Public dashboard by default
 DRY_RUN="false"
 FIRESTORE_DATABASE="onboarding"
+GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -46,6 +52,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --service-name)
       SERVICE_NAME="$2"
+      shift 2
+      ;;
+    --github-token)
+      GITHUB_TOKEN="$2"
       shift 2
       ;;
     --allow-unauthenticated)
@@ -76,6 +86,28 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${BLUE}Onboarding Status Web Dashboard Deployment${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
+
+# Validate GitHub token
+if [[ -z "${GITHUB_TOKEN}" ]]; then
+  echo -e "${RED}✗ GitHub token not provided${NC}"
+  echo ""
+  echo "A GitHub token is required to check participant GitHub invite status."
+  echo "Please provide a token using one of these methods:"
+  echo ""
+  echo "  1. Set the GITHUB_TOKEN environment variable:"
+  echo -e "     ${BLUE}export GITHUB_TOKEN=ghp_your_token_here${NC}"
+  echo ""
+  echo "  2. Pass it as a command line argument:"
+  echo -e "     ${BLUE}./deploy_onboarding_status_web.sh --github-token ghp_your_token_here${NC}"
+  echo ""
+  echo "The token needs the following permissions:"
+  echo "  • read:org (to read organization membership and invitations)"
+  echo ""
+  echo "Create a token at: https://github.com/settings/tokens"
+  echo ""
+  exit 1
+fi
+
 echo -e "${YELLOW}Configuration:${NC}"
 echo "  Project ID:          ${PROJECT_ID}"
 echo "  Region:              ${REGION}"
@@ -83,6 +115,7 @@ echo "  Service Name:        ${SERVICE_NAME}"
 echo "  Firestore Database:  ${FIRESTORE_DATABASE}"
 echo "  Service Directory:   ${SERVICE_DIR}"
 echo "  Allow Unauth:        ${ALLOW_UNAUTHENTICATED}"
+echo "  GitHub Token:        ${GREEN}✓ Set${NC} (${#GITHUB_TOKEN} chars)"
 echo "  Dry Run:             ${DRY_RUN}"
 echo ""
 
@@ -145,7 +178,7 @@ DEPLOY_CMD=(
   --platform=managed
   --region="${REGION}"
   --project="${PROJECT_ID}"
-  --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},FIRESTORE_DATABASE_ID=${FIRESTORE_DATABASE}"
+  --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},FIRESTORE_DATABASE_ID=${FIRESTORE_DATABASE},GITHUB_TOKEN=${GITHUB_TOKEN}"
   --memory=1Gi
   --cpu=1
   --timeout=300s

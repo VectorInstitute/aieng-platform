@@ -23,13 +23,28 @@ interface GitHubStatusResponse {
  */
 async function checkGhCli(): Promise<{ available: boolean; error?: string }> {
   try {
+    // Check if gh CLI is installed
     await execAsync('gh --version');
-    await execAsync('gh auth status');
+
+    // Check if GitHub token is available
+    const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+    if (!token) {
+      return {
+        available: false,
+        error: 'GitHub token not configured (GITHUB_TOKEN or GH_TOKEN environment variable not set)'
+      };
+    }
+
+    // Test authentication by making a simple API call
+    await execAsync('gh api user', {
+      env: { ...process.env, GH_TOKEN: token }
+    });
+
     return { available: true };
-  } catch {
+  } catch (error) {
     return {
       available: false,
-      error: 'GitHub CLI not available or not authenticated'
+      error: `GitHub CLI not available or authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     };
   }
 }
@@ -40,8 +55,12 @@ async function checkGhCli(): Promise<{ available: boolean; error?: string }> {
  */
 async function getPendingInvitations(): Promise<Set<string>> {
   try {
+    const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
     const { stdout } = await execAsync(
-      `gh api "orgs/${ORG_NAME}/invitations" --jq '.[].login // empty'`
+      `gh api "orgs/${ORG_NAME}/invitations" --jq '.[].login // empty'`,
+      {
+        env: { ...process.env, GH_TOKEN: token }
+      }
     );
     const logins = stdout
       .trim()
@@ -60,7 +79,10 @@ async function getPendingInvitations(): Promise<Set<string>> {
  */
 async function isOrgMember(username: string): Promise<boolean> {
   try {
-    await execAsync(`gh api "orgs/${ORG_NAME}/members/${username}" 2>/dev/null`);
+    const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+    await execAsync(`gh api "orgs/${ORG_NAME}/members/${username}" 2>/dev/null`, {
+      env: { ...process.env, GH_TOKEN: token }
+    });
     return true;
   } catch {
     return false;
