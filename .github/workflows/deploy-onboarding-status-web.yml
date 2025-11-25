@@ -1,0 +1,345 @@
+name: Deploy Onboarding Status Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/onboarding-status-web/**'
+      - '.github/workflows/deploy-onboarding-status-web.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'services/onboarding-status-web/**'
+      - '.github/workflows/deploy-onboarding-status-web.yml'
+  workflow_dispatch:  # Allow manual triggers
+
+# Prevent concurrent deployments
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false  # Don't cancel in-progress deployments
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GAR_LOCATION: us-central1
+  REPOSITORY: onboarding-status
+  SERVICE_NAME: onboarding-status-web
+  REGION: us-central1
+  FIRESTORE_DATABASE_ID: onboarding
+
+jobs:
+  # Build and test the Next.js application
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for GCP authentication
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1  # Only fetch latest commit for faster checkouts
+
+      - name: Free up disk space
+        run: |
+          echo "Disk space before cleanup:"
+          df -h
+
+          # Remove unnecessary tools and files
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+          # Clean up Docker
+          docker system prune -af --volumes
+
+          echo "Disk space after cleanup:"
+          df -h
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/onboarding-status-web
+          file: ./services/onboarding-status-web/Dockerfile
+          push: false
+          load: true
+          tags: onboarding-status-web:${{ github.sha }}
+          cache-from: type=gha,scope=onboarding-status-web
+          cache-to: type=gha,mode=max,scope=onboarding-status-web
+
+      # Test container (skip on main push since tests already ran in PR)
+      - name: Test container
+        if: github.actor != 'dependabot[bot]' && !(github.ref == 'refs/heads/main' && github.event_name == 'push')
+        run: |
+          set -e
+
+          echo "Starting Next.js container..."
+          docker run -d \
+            --name onboarding-status-test \
+            --health-cmd="curl -f http://localhost:8080/onboarding/api/participants || exit 1" \
+            --health-interval=10s \
+            --health-timeout=10s \
+            --health-retries=30 \
+            --health-start-period=60s \
+            -p 8080:8080 \
+            -e GCP_PROJECT_ID=test \
+            -e FIRESTORE_DATABASE_ID=test \
+            -e GITHUB_TOKEN=test \
+            onboarding-status-web:${{ github.sha }}
+
+          # Wait for container to be healthy
+          echo "Waiting for container to be healthy..."
+          TIMEOUT=120
+          ELAPSED=0
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' onboarding-status-test)
+            echo "  Health status: $HEALTH_STATUS (${ELAPSED}s elapsed)"
+
+            if [ "$HEALTH_STATUS" = "healthy" ]; then
+              echo "✓ Container is healthy"
+              break
+            fi
+
+            if [ "$(docker inspect --format='{{.State.Status}}' onboarding-status-test)" != "running" ]; then
+              echo "✗ Container stopped unexpectedly"
+              docker logs onboarding-status-test
+              exit 1
+            fi
+
+            sleep 10
+            ELAPSED=$((ELAPSED + 10))
+          done
+
+          if [ $ELAPSED -ge $TIMEOUT ]; then
+            echo "✗ Health check timeout after ${TIMEOUT}s"
+            echo "Container logs:"
+            docker logs onboarding-status-test
+            exit 1
+          fi
+
+          echo "✓ Container tests passed"
+
+      - name: Cleanup test container
+        if: always()
+        run: |
+          docker stop onboarding-status-test || true
+          docker rm onboarding-status-test || true
+          # Keep image if pushing to main, otherwise remove it
+          if [ "${{ github.ref }}" != "refs/heads/main" ] || [ "${{ github.event_name }}" != "push" ]; then
+            docker rmi onboarding-status-web:${{ github.sha }} || true
+          fi
+
+      # Push image to GAR (only on main push)
+      - name: Authenticate to Google Cloud
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - name: Set up Cloud SDK
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev --quiet
+
+      - name: Create Artifact Registry repository
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          # Check if repository exists
+          if ! gcloud artifacts repositories describe ${{ env.REPOSITORY }} \
+            --location=${{ env.GAR_LOCATION }} \
+            --format="get(name)" 2>/dev/null; then
+            echo "Creating Artifact Registry repository: ${{ env.REPOSITORY }}"
+            gcloud artifacts repositories create ${{ env.REPOSITORY }} \
+              --repository-format=docker \
+              --location=${{ env.GAR_LOCATION }} \
+              --description="Docker repository for Onboarding Status Dashboard" \
+              --quiet
+            echo "✓ Repository created"
+          else
+            echo "✓ Repository already exists"
+          fi
+
+      - name: Tag and push image to GAR
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          set -e
+
+          IMAGE_URL="${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          LATEST_URL="${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:latest"
+
+          echo "Tagging image..."
+          docker tag onboarding-status-web:${{ github.sha }} "$IMAGE_URL"
+          docker tag onboarding-status-web:${{ github.sha }} "$LATEST_URL"
+
+          echo "Pushing image to GAR..."
+          docker push "$IMAGE_URL"
+          docker push "$LATEST_URL"
+
+          echo "✓ Image pushed: $IMAGE_URL"
+
+  # Deploy to Cloud Run
+  deploy:
+    name: Deploy to Cloud Run
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    outputs:
+      service-url: ${{ steps.deploy.outputs.url }}
+      service-revision: ${{ steps.deploy.outputs.revision }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set image URL
+        id: set-image
+        run: |
+          IMAGE_URL="${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          echo "image=$IMAGE_URL" >> $GITHUB_OUTPUT
+          echo "Using image: $IMAGE_URL"
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        run: |
+          set -e
+
+          echo "Deploying to Cloud Run..."
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ steps.set-image.outputs.image }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory=1Gi \
+            --cpu=1 \
+            --timeout=300s \
+            --max-instances=10 \
+            --min-instances=0 \
+            --concurrency=80 \
+            --port=8080 \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ env.FIRESTORE_DATABASE_ID }},GITHUB_TOKEN=${{ secrets.GH_ORG_TOKEN }},DEPLOYMENT_SHA=${{ github.sha }}" \
+            --update-labels="deployed-by=github-actions,commit=${{ github.sha }}" \
+            --update-annotations="git-commit=${{ github.sha }},git-ref=${{ github.ref }},deployed-at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --quiet
+
+          # Route traffic to latest revision
+          echo "Routing traffic to latest revision..."
+          gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+            --to-latest \
+            --region ${{ env.REGION }} \
+            --quiet
+
+          # Get deployment info
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)')
+
+          REVISION_NAME=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --format 'value(status.latestReadyRevisionName)')
+
+          echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "revision=$REVISION_NAME" >> $GITHUB_OUTPUT
+
+          echo "✓ Service deployed"
+          echo "  URL: $SERVICE_URL"
+          echo "  Revision: $REVISION_NAME"
+
+      - name: Verify deployment health
+        run: |
+          set -e
+
+          SERVICE_URL="${{ steps.deploy.outputs.url }}"
+          echo "Verifying deployment health at $SERVICE_URL..."
+
+          MAX_RETRIES=30
+          RETRY_COUNT=0
+          BACKOFF=5
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            # Test the participants API endpoint
+            if curl -sf --max-time 10 "${SERVICE_URL}/onboarding/api/participants" > /dev/null 2>&1; then
+              echo "✓ Health check passed - API is responding"
+
+              # Test GitHub status endpoint
+              STATUS_RESPONSE=$(curl -sf --max-time 10 -X POST \
+                -H "Content-Type: application/json" \
+                -d '{"github_handles":["test"]}' \
+                "${SERVICE_URL}/onboarding/api/github-status" || echo "")
+
+              if [ -n "$STATUS_RESPONSE" ]; then
+                echo "✓ GitHub status endpoint is responding"
+              else
+                echo "⚠ Warning: GitHub status endpoint did not respond"
+              fi
+
+              exit 0
+            fi
+
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Attempt $RETRY_COUNT/$MAX_RETRIES failed, waiting ${BACKOFF}s..."
+            sleep $BACKOFF
+
+            # Exponential backoff (max 30s)
+            BACKOFF=$((BACKOFF < 30 ? BACKOFF + 5 : 30))
+          done
+
+          echo "✗ Health check failed after $MAX_RETRIES attempts"
+          echo "Fetching recent logs..."
+          gcloud run services logs read ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --limit 50 || true
+          exit 1
+
+      - name: Generate deployment summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🚀 Deployment Summary
+
+          **Commit:** \`${{ github.sha }}\`
+          **Branch:** \`${{ github.ref_name }}\`
+          **Triggered by:** @${{ github.actor }}
+
+          ### Onboarding Status Dashboard
+          - **URL:** ${{ steps.deploy.outputs.url }}/onboarding
+          - **Revision:** \`${{ steps.deploy.outputs.revision }}\`
+          - **Status:** ✅ Deployed
+
+          **API Endpoints:**
+          - Participants: ${{ steps.deploy.outputs.url }}/onboarding/api/participants
+          - GitHub Status: ${{ steps.deploy.outputs.url }}/onboarding/api/github-status
+
+          ---
+          *Deployment completed at $(date -u +"%Y-%m-%d %H:%M:%S UTC")*
+          EOF

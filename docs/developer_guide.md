@@ -58,7 +58,15 @@ This guide covers:
 - Deployment and verification procedures
 - Troubleshooting common issues
 
-**Deployment Command:**
+**Automated Deployment (Recommended):**
+
+The service is automatically deployed via GitHub Actions when changes are pushed to the `main` branch. The workflow:
+- Builds and tests the Docker container
+- Pushes to Google Artifact Registry
+- Deploys to Cloud Run
+- Verifies health checks
+
+**Manual Deployment:**
 ```bash
 ./scripts/admin/deploy_onboarding_status_web.sh
 ```
@@ -67,6 +75,18 @@ This guide covers:
 ```
 https://platform.vectorinstitute.ai/onboarding
 ```
+
+**Required GitHub Secrets for Automated Deployment:**
+
+Configure these secrets in GitHub repository settings (`Settings` → `Secrets and variables` → `Actions`):
+
+1. **GCP_PROJECT_ID**: Your GCP project ID (e.g., `coderd`)
+2. **WIF_PROVIDER**: Workload Identity Federation provider
+   - Format: `projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID`
+3. **GCP_SERVICE_ACCOUNT**: Service account email for deployment
+   - Format: `SERVICE_ACCOUNT_NAME@PROJECT_ID.iam.gserviceaccount.com`
+   - Required roles: `roles/run.admin`, `roles/iam.serviceAccountUser`, `roles/artifactregistry.admin`
+4. **GH_ORG_TOKEN**: Personal access token with `read:org` scope for checking GitHub organization membership
 
 ---
 
