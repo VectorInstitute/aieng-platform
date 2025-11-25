@@ -1072,12 +1072,29 @@
 <li>Deployment and verification procedures</li>
 <li>Troubleshooting common issues</li>
 </ul>
-<p><strong>Deployment Command:</strong>
+<p><strong>Automated Deployment (Recommended):</strong></p>
+<p>The service is automatically deployed via GitHub Actions when changes are pushed to the <code>main</code> branch. The workflow:
+- Builds and tests the Docker container
+- Pushes to Google Artifact Registry
+- Deploys to Cloud Run
+- Verifies health checks</p>
+<p><strong>Manual Deployment:</strong>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>./scripts/admin/deploy_onboarding_status_web.sh
 </span></code></pre></div></p>
 <p><strong>Access URL:</strong>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>https://platform.vectorinstitute.ai/onboarding
 </span></code></pre></div></p>
+<p><strong>Required GitHub Secrets for Automated Deployment:</strong></p>
+<p>Configure these secrets in GitHub repository settings (<code>Settings</code> → <code>Secrets and variables</code> → <code>Actions</code>):</p>
+<ol>
+<li><strong>GCP_PROJECT_ID</strong>: Your GCP project ID (e.g., <code>coderd</code>)</li>
+<li><strong>WIF_PROVIDER</strong>: Workload Identity Federation provider</li>
+<li>Format: <code>projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID</code></li>
+<li><strong>GCP_SERVICE_ACCOUNT</strong>: Service account email for deployment</li>
+<li>Format: <code>SERVICE_ACCOUNT_NAME@PROJECT_ID.iam.gserviceaccount.com</code></li>
+<li>Required roles: <code>roles/run.admin</code>, <code>roles/iam.serviceAccountUser</code>, <code>roles/artifactregistry.admin</code></li>
+<li><strong>GH_ORG_TOKEN</strong>: Personal access token with <code>read:org</code> scope for checking GitHub organization membership</li>
+</ol>
 <hr />
 <h2 id="service-architecture">Service Architecture<a class="headerlink" href="#service-architecture" title="Permanent link">&para;</a></h2>
 <h3 id="load-balancer-configuration">Load Balancer Configuration<a class="headerlink" href="#load-balancer-configuration" title="Permanent link">&para;</a></h3>
