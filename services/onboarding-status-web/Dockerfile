@@ -29,8 +29,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install GitHub CLI
-RUN apk add --no-cache github-cli
+# Install GitHub CLI and curl for health checks
+RUN apk add --no-cache github-cli curl
 
 # Create a non-root user for security
 RUN addgroup --system --gid 1001 nodejs
