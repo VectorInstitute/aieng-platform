@@ -4,6 +4,8 @@ A modern, real-time web dashboard built with Next.js to display participant onbo
 
 ## Features
 
+- **GitHub OAuth Authentication**: Secure authentication with organization membership verification
+- **Organization Access Control**: Only members of AI-Engineering-Platform organization can access
 - **Real-time Status Tracking**: Displays live participant onboarding status fetched from Firestore
 - **Clean, Polished UI**: Modern, responsive design with dark mode support
 - **Summary Statistics**: Shows total participants, onboarded count, completion percentage
@@ -24,15 +26,34 @@ A modern, real-time web dashboard built with Next.js to display participant onbo
 services/onboarding-status-web/
 ├── app/
 │   ├── api/
-│   │   └── participants/
-│   │       └── route.ts         # API endpoint to fetch Firestore data
+│   │   ├── auth/
+│   │   │   └── [...nextauth]/
+│   │   │       └── route.ts     # NextAuth.js API route handler
+│   │   ├── participants/
+│   │   │   └── route.ts         # API endpoint to fetch Firestore data
+│   │   └── github-status/
+│   │       └── route.ts         # API endpoint to check GitHub org status
+│   ├── auth/
+│   │   ├── signin/
+│   │   │   └── page.tsx         # Custom sign-in page
+│   │   └── error/
+│   │       └── page.tsx         # Authentication error page
 │   ├── globals.css              # Global styles with Tailwind
-│   ├── layout.tsx               # Root layout component
+│   ├── layout.tsx               # Root layout with auth header
 │   └── page.tsx                 # Main dashboard page
+├── components/
+│   ├── session-provider.tsx    # NextAuth session provider wrapper
+│   └── auth-button.tsx          # User profile and sign out button
+├── lib/
+│   └── auth.ts                  # NextAuth.js configuration
+├── types/
+│   └── next-auth.d.ts          # TypeScript definitions for NextAuth
 ├── public/                      # Static assets
+├── middleware.ts               # Route protection middleware
 ├── Dockerfile                   # Multi-stage Docker build
 ├── next.config.js              # Next.js configuration
 ├── package.json                # Dependencies
+├── .env.example                # Environment variables template
 ├── postcss.config.js           # PostCSS configuration
 ├── tailwind.config.js          # Tailwind CSS configuration
 └── tsconfig.json               # TypeScript configuration
@@ -45,26 +66,53 @@ services/onboarding-status-web/
 - Node.js 20+
 - npm or yarn
 - Google Cloud credentials with Firestore access
+- GitHub OAuth App credentials
+- GitHub Personal Access Token with `read:org` and `read:user` scopes
 
 ### Setup
 
-1. Install dependencies:
+1. **Create a GitHub OAuth Application**:
+   - Go to https://github.com/organizations/AI-Engineering-Platform/settings/applications
+   - Click "New OAuth App" or "Register a new application"
+   - Set Application name: `Onboarding Status Dashboard (Dev)`
+   - Set Homepage URL: `http://localhost:3000`
+   - Set Authorization callback URL: `http://localhost:3000/onboarding/api/auth/callback/github`
+   - Copy the Client ID and generate a Client Secret
+
+2. **Create a GitHub Personal Access Token**:
+   - Go to https://github.com/settings/tokens
+   - Click "Generate new token" (classic)
+   - Select scopes: `read:org`, `read:user`
+   - Copy the generated token
+
+3. **Install dependencies**:
    ```bash
    npm install
    ```
 
-2. Set environment variables:
+4. **Configure environment variables**:
    ```bash
-   export GCP_PROJECT_ID=coderd
-   export FIRESTORE_DATABASE_ID=onboarding
+   # Copy the example file
+   cp .env.example .env.local
+
+   # Edit .env.local with your credentials
+   # Set the following variables:
+   # - GITHUB_CLIENT_ID
+   # - GITHUB_CLIENT_SECRET
+   # - GITHUB_TOKEN
+   # - NEXTAUTH_SECRET (generate with: openssl rand -base64 32)
+   # - NEXTAUTH_URL=http://localhost:3000/onboarding
    ```
 
-3. Run the development server:
+5. **Run the development server**:
    ```bash
    npm run dev
    ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+6. **Access the dashboard**:
+   - Open http://localhost:3000/onboarding in your browser
+   - Sign in with your GitHub account
+   - You must be a member of the AI-Engineering-Platform organization to access
 
 ## Deployment
 
@@ -120,6 +168,16 @@ cd /path/to/aieng-platform
 
 ## Environment Variables
 
+### Required Variables
+
+- `GITHUB_CLIENT_ID`: GitHub OAuth App Client ID
+- `GITHUB_CLIENT_SECRET`: GitHub OAuth App Client Secret
+- `GITHUB_TOKEN`: GitHub Personal Access Token with `read:org` and `read:user` scopes
+- `NEXTAUTH_SECRET`: Secret key for NextAuth.js (generate with `openssl rand -base64 32`)
+- `NEXTAUTH_URL`: Full URL of the application (e.g., `https://yourdomain.com/onboarding`)
+
+### Optional Variables
+
 - `GCP_PROJECT_ID`: Google Cloud Project ID (default: `coderd`)
 - `FIRESTORE_DATABASE_ID`: Firestore database ID (default: `onboarding`)
 - `PORT`: Port to run the server on (default: `8080`)
@@ -174,10 +232,27 @@ Returns participant onboarding status and summary statistics.
 
 ## Security
 
-- Uses Google Cloud service account authentication for Firestore access
-- Runs as non-root user in Docker container
-- Follows Cloud Run security best practices
-- CORS configured for API routes
+- **GitHub OAuth Authentication**: All routes protected by NextAuth.js middleware
+- **Organization Membership Verification**: Only AI-Engineering-Platform members can access
+- **Session Management**: Secure JWT-based sessions with HTTP-only cookies
+- **API Protection**: All API routes require valid authentication
+- **Google Cloud IAM**: Service account authentication for Firestore access
+- **Container Security**: Runs as non-root user in Docker container
+- **Cloud Run Best Practices**: Follows Google Cloud Run security guidelines
+- **CORS Configuration**: Properly configured for API routes
+
+### Authentication Flow
+
+1. User visits the dashboard
+2. Middleware redirects unauthenticated users to `/auth/signin`
+3. User clicks "Sign in with GitHub"
+4. GitHub OAuth redirects to authorization page
+5. After approval, GitHub redirects back with authorization code
+6. NextAuth exchanges code for access token
+7. Server verifies user is a member of AI-Engineering-Platform organization
+8. If verified, user session is created and stored in JWT
+9. User is redirected to the dashboard
+10. All subsequent requests include the session token for authentication
 
 ## Performance
 
