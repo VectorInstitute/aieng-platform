@@ -1,12 +1,16 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Open_Sans } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+const openSans = Open_Sans({
+  subsets: ['latin'],
+  weight: ['400', '600', '700'],
+  variable: '--font-open-sans',
+})
 
 export const metadata: Metadata = {
-  title: 'Participant Onboarding Status',
-  description: 'View participant onboarding status and team assignments',
+  title: 'Vector Institute - Onboarding Status',
+  description: 'Track technical onboarding progress for Vector Institute participants and facilitators',
 }
 
 export default function RootLayout({
@@ -16,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={openSans.className}>{children}</body>
     </html>
   )
 }
