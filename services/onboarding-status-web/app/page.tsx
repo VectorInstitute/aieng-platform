@@ -98,8 +98,8 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
         <div className="text-center">
-          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-          <p className="mt-4 text-slate-600 dark:text-slate-400">Loading participant data...</p>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-vector-magenta border-r-transparent"></div>
+          <p className="mt-4 text-slate-700 dark:text-slate-300 font-semibold">Loading participant data...</p>
         </div>
       </div>
     );
@@ -109,12 +109,12 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
         <div className="card p-8 max-w-md w-full text-center">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <div className="text-vector-magenta text-5xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Error</h2>
           <p className="text-slate-600 dark:text-slate-400 mb-4">{error}</p>
           <button
             onClick={fetchData}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-6 py-2 bg-vector-magenta text-white rounded-lg hover:bg-vector-violet transition-colors font-semibold"
           >
             Retry
           </button>
@@ -140,7 +140,7 @@ export default function Home() {
   const renderGitHubStatus = (status?: 'member' | 'pending' | 'not_invited') => {
     if (!status) {
       return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400">
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400 border border-slate-300 dark:border-slate-600">
           <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
@@ -152,7 +152,7 @@ export default function Home() {
     switch (status) {
       case 'member':
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-vector-turquoise/10 text-vector-turquoise dark:bg-vector-turquoise/20 dark:text-vector-turquoise border border-vector-turquoise/30">
             <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
@@ -161,7 +161,7 @@ export default function Home() {
         );
       case 'pending':
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
             <svg className="w-3 h-3 mr-1 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
             </svg>
@@ -170,7 +170,7 @@ export default function Home() {
         );
       case 'not_invited':
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
             <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
             </svg>
@@ -227,27 +227,31 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 animate-fade-in">
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-2">
-            Onboarding Status
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400">
-            Track technical onboarding progress in real-time
-          </p>
-          {lastUpdated && (
-            <p className="text-sm text-slate-500 dark:text-slate-500 mt-2">
-              Last updated: {lastUpdated.toLocaleTimeString()}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      {/* Vector Brand Header Accent */}
+      <div className="h-1 bg-gradient-to-r from-vector-magenta via-vector-violet to-vector-cobalt"></div>
+
+      <div className="p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8 animate-fade-in">
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-vector-magenta via-vector-violet to-vector-cobalt bg-clip-text text-transparent mb-2">
+              Onboarding Status
+            </h1>
+            <p className="text-slate-700 dark:text-slate-300 text-lg">
+              Track technical onboarding progress in real-time
             </p>
-          )}
-        </div>
+            {lastUpdated && (
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </p>
+            )}
+          </div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 animate-slide-up">
           <div className="card p-6">
-            <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+            <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
               Total Participants
             </div>
             <div className="text-3xl font-bold text-slate-900 dark:text-white">
@@ -255,29 +259,29 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="card p-6 border-l-4 border-green-500">
-            <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+          <div className="card p-6 border-l-4 border-vector-turquoise">
+            <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
               Onboarded
             </div>
-            <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+            <div className="text-3xl font-bold text-vector-turquoise">
               {summary.onboarded}
             </div>
           </div>
 
-          <div className="card p-6 border-l-4 border-red-500">
-            <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+          <div className="card p-6 border-l-4 border-vector-tangerine">
+            <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
               Not Onboarded
             </div>
-            <div className="text-3xl font-bold text-red-600 dark:text-red-400">
+            <div className="text-3xl font-bold text-vector-tangerine">
               {summary.notOnboarded}
             </div>
           </div>
 
-          <div className="card p-6 border-l-4 border-blue-500">
-            <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+          <div className="card p-6 border-l-4 border-vector-magenta">
+            <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
               Completion Rate
             </div>
-            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+            <div className="text-3xl font-bold text-vector-magenta">
               {summary.percentage}%
             </div>
           </div>
@@ -286,16 +290,16 @@ export default function Home() {
         {/* Progress Bar */}
         <div className="card p-6 mb-8 animate-slide-up" style={{ animationDelay: '100ms' }}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
               Overall Progress
             </span>
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
               {summary.onboarded} of {summary.total}
             </span>
           </div>
           <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-4 overflow-hidden">
             <div
-              className="bg-gradient-to-r from-green-500 to-green-600 h-4 rounded-full transition-all duration-1000 ease-out"
+              className="bg-gradient-to-r from-vector-magenta via-vector-violet to-vector-cobalt h-4 rounded-full transition-all duration-1000 ease-out"
               style={{ width: `${summary.percentage}%` }}
             ></div>
           </div>
@@ -317,7 +321,7 @@ export default function Home() {
                 id="role-filter"
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value as 'participants' | 'facilitators')}
-                className="w-full sm:w-72 pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium shadow-sm hover:border-slate-300 dark:hover:border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 transition-all duration-200 appearance-none cursor-pointer"
+                className="w-full sm:w-72 pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold shadow-sm hover:border-vector-magenta dark:hover:border-vector-violet focus:ring-2 focus:ring-vector-magenta focus:border-vector-magenta dark:focus:ring-vector-violet dark:focus:border-vector-violet transition-all duration-200 appearance-none cursor-pointer"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
                   backgroundPosition: 'right 0.5rem center',
@@ -345,7 +349,7 @@ export default function Home() {
                 id="status-filter"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as 'all' | 'onboarded' | 'not_onboarded')}
-                className="w-full sm:w-72 pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium shadow-sm hover:border-slate-300 dark:hover:border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 transition-all duration-200 appearance-none cursor-pointer"
+                className="w-full sm:w-72 pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold shadow-sm hover:border-vector-magenta dark:hover:border-vector-violet focus:ring-2 focus:ring-vector-magenta focus:border-vector-magenta dark:focus:ring-vector-violet dark:focus:border-vector-violet transition-all duration-200 appearance-none cursor-pointer"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
                   backgroundPosition: 'right 0.5rem center',
@@ -363,7 +367,7 @@ export default function Home() {
           <div className="flex items-end">
             <button
               onClick={exportToCSV}
-              className="group relative inline-flex items-center px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 hover:from-emerald-700 hover:via-emerald-700 hover:to-teal-700 text-white font-semibold shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
+              className="group relative inline-flex items-center px-6 py-3 rounded-xl bg-gradient-to-r from-vector-magenta via-vector-violet to-vector-cobalt hover:from-vector-violet hover:via-vector-cobalt hover:to-vector-turquoise text-white font-bold shadow-lg shadow-vector-magenta/30 hover:shadow-xl hover:shadow-vector-violet/40 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
             >
               <svg className="w-5 h-5 mr-2 transition-transform group-hover:translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
@@ -380,7 +384,7 @@ export default function Home() {
         <div className="card overflow-hidden animate-slide-up" style={{ animationDelay: '200ms' }}>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+              <thead className="bg-slate-100 dark:bg-slate-800 border-b-2 border-vector-magenta/20 dark:border-vector-violet/30">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     #
@@ -429,20 +433,20 @@ export default function Home() {
                       {renderGitHubStatus(participant.github_status)}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-vector-cobalt/10 text-vector-cobalt dark:bg-vector-cobalt/20 dark:text-vector-cobalt border border-vector-cobalt/30">
                         {participant.team_name}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
                       {participant.onboarded ? (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-vector-turquoise/10 text-vector-turquoise dark:bg-vector-turquoise/20 dark:text-vector-turquoise border border-vector-turquoise/30">
                           <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
                           Onboarded
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-vector-tangerine/10 text-vector-tangerine dark:bg-vector-tangerine/20 dark:text-vector-tangerine border border-vector-tangerine/30">
                           <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                           </svg>
@@ -455,6 +459,7 @@ export default function Home() {
               </tbody>
             </table>
           </div>
+        </div>
         </div>
       </div>
     </div>
