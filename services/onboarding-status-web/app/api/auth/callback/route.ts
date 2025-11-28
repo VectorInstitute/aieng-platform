@@ -6,7 +6,14 @@ import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
+// Get base URL for redirects (use configured URL or fallback to request URL)
+function getBaseUrl(request: NextRequest): string {
+  return process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+}
+
 export async function GET(request: NextRequest) {
+  const baseUrl = getBaseUrl(request);
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
@@ -14,24 +21,24 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get('error');
 
     if (error) {
-      return NextResponse.redirect(new URL(`/onboarding?error=${encodeURIComponent(error)}`, request.url));
+      return NextResponse.redirect(`${baseUrl}/onboarding?error=${encodeURIComponent(error)}`);
     }
 
     if (!code || !state) {
-      return NextResponse.redirect(new URL('/onboarding?error=invalid_callback', request.url));
+      return NextResponse.redirect(`${baseUrl}/onboarding?error=invalid_callback`);
     }
 
     // Verify state
     const cookieStore = await cookies();
     const storedState = cookieStore.get('oauth_state')?.value;
     if (state !== storedState) {
-      return NextResponse.redirect(new URL('/onboarding?error=invalid_state', request.url));
+      return NextResponse.redirect(`${baseUrl}/onboarding?error=invalid_state`);
     }
 
     // Get PKCE verifier
     const verifier = cookieStore.get('pkce_verifier')?.value;
     if (!verifier) {
-      return NextResponse.redirect(new URL('/onboarding?error=missing_verifier', request.url));
+      return NextResponse.redirect(`${baseUrl}/onboarding?error=missing_verifier`);
     }
 
     // Exchange code for tokens
@@ -55,7 +62,7 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('Token exchange failed:', errorData);
-      return NextResponse.redirect(new URL('/onboarding?error=token_exchange_failed', request.url));
+      return NextResponse.redirect(`${baseUrl}/onboarding?error=token_exchange_failed`);
     }
 
     const data = await response.json();
@@ -74,9 +81,7 @@ export async function GET(request: NextRequest) {
     if (authConfig.allowedDomains && authConfig.allowedDomains.length > 0) {
       const domain = user.email?.split('@')[1];
       if (!domain || !authConfig.allowedDomains.includes(domain)) {
-        return NextResponse.redirect(
-          new URL(`/onboarding?error=unauthorized_domain&domain=${domain}`, request.url)
-        );
+        return NextResponse.redirect(`${baseUrl}/onboarding?error=unauthorized_domain&domain=${domain}`);
       }
     }
 
@@ -84,13 +89,13 @@ export async function GET(request: NextRequest) {
     await createSession(tokens, user);
 
     // Clean up temporary cookies
-    const redirectResponse = NextResponse.redirect(new URL('/onboarding', request.url));
+    const redirectResponse = NextResponse.redirect(`${baseUrl}/onboarding`);
     redirectResponse.cookies.delete('pkce_verifier');
     redirectResponse.cookies.delete('oauth_state');
 
     return redirectResponse;
   } catch (error) {
     console.error('Callback error:', error);
-    return NextResponse.redirect(new URL('/onboarding?error=authentication_failed', request.url));
+    return NextResponse.redirect(`${baseUrl}/onboarding?error=authentication_failed`);
   }
 }
