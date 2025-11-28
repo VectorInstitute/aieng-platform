@@ -4,6 +4,7 @@ A modern, real-time web dashboard built with Next.js to display participant onbo
 
 ## Features
 
+- **Authentication**: Secure Google OAuth SSO with domain restriction (@vectorinstitute.ai)
 - **Real-time Status Tracking**: Displays live participant onboarding status fetched from Firestore
 - **Clean, Polished UI**: Modern, responsive design with dark mode support
 - **Summary Statistics**: Shows total participants, onboarded count, completion percentage
@@ -53,18 +54,24 @@ services/onboarding-status-web/
    npm install
    ```
 
-2. Set environment variables:
+2. Set up environment variables:
    ```bash
-   export GCP_PROJECT_ID=coderd
-   export FIRESTORE_DATABASE_ID=onboarding
+   cp .env.example .env
    ```
+
+   Then edit `.env` and fill in the required values:
+   - Get Google OAuth credentials from [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   - Generate a session secret: `openssl rand -base64 32`
+   - Set your GitHub token with appropriate permissions
 
 3. Run the development server:
    ```bash
    npm run dev
    ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+4. Open [http://localhost:3000/onboarding](http://localhost:3000/onboarding) in your browser
+
+5. Sign in with a Vector Institute Google account (@vectorinstitute.ai)
 
 ## Deployment
 
@@ -120,15 +127,34 @@ cd /path/to/aieng-platform
 
 ## Environment Variables
 
+### Required
 - `GCP_PROJECT_ID`: Google Cloud Project ID (default: `coderd`)
 - `FIRESTORE_DATABASE_ID`: Firestore database ID (default: `onboarding`)
+- `GITHUB_TOKEN`: GitHub personal access token for API access
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: Google OAuth client ID
+- `GOOGLE_CLIENT_SECRET`: Google OAuth client secret
+- `SESSION_SECRET`: Secret for encrypting session cookies (generate with: `openssl rand -base64 32`)
+
+### Optional
+- `NEXT_PUBLIC_APP_URL`: Full application URL (default: `http://localhost:3000`)
+- `REDIRECT_URI`: OAuth callback URL (default: `${NEXT_PUBLIC_APP_URL}/onboarding/api/auth/callback`)
+- `ALLOWED_DOMAINS`: Comma-separated list of allowed email domains (default: `vectorinstitute.ai`)
 - `PORT`: Port to run the server on (default: `8080`)
 
 ## API Endpoints
 
+### Authentication Endpoints
+
+- `GET /api/auth/login` - Initiates Google OAuth flow
+- `GET /api/auth/callback` - Handles OAuth callback and creates session
+- `POST /api/auth/logout` - Destroys user session
+- `GET /api/auth/session` - Returns current session information
+
+### Data Endpoints
+
 ### GET /api/participants
 
-Returns participant onboarding status and summary statistics.
+Returns participant onboarding status and summary statistics. Requires authentication.
 
 **Response:**
 ```json
@@ -174,10 +200,12 @@ Returns participant onboarding status and summary statistics.
 
 ## Security
 
-- Uses Google Cloud service account authentication for Firestore access
-- Runs as non-root user in Docker container
-- Follows Cloud Run security best practices
-- CORS configured for API routes
+- **OAuth 2.0 Authentication**: Secure Google OAuth with PKCE flow
+- **Session Management**: HTTP-only cookies with encrypted sessions using iron-session
+- **Domain Restriction**: Only @vectorinstitute.ai email addresses can access
+- **Firestore Access**: Service account authentication for database access
+- **Container Security**: Runs as non-root user in Docker
+- **CORS Configuration**: Properly configured API routes
 
 ## Performance
 
@@ -205,6 +233,15 @@ If the Docker build fails:
 1. Ensure `package-lock.json` exists: `npm install`
 2. Check that the `public` directory exists
 3. Verify Node.js version compatibility
+
+### Authentication Issues
+
+If you can't sign in:
+1. Verify Google OAuth credentials are correct
+2. Ensure redirect URI is registered in Google Cloud Console
+3. Check that your email domain (@vectorinstitute.ai) is in ALLOWED_DOMAINS
+4. Verify SESSION_SECRET is at least 32 characters
+5. Check browser console for errors
 
 ### Firestore Connection Issues
 
