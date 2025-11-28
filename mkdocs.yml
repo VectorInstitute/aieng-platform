@@ -31,6 +31,7 @@ nav:
       - Overview: developer_guide.md
       - Infrastructure:
           - Onboarding Status Web - Load Balancer Setup: onboarding-status-web-load-balancer-setup.md
+          - Onboarding Status Web - Authentication: onboarding-status-web-auth.md
 plugins:
   - search
   - mkdocstrings:

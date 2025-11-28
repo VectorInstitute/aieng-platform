@@ -87,6 +87,11 @@ jobs:
             -e GCP_PROJECT_ID=test \
             -e FIRESTORE_DATABASE_ID=test \
             -e GITHUB_TOKEN=test \
+            -e NEXT_PUBLIC_GOOGLE_CLIENT_ID=test-client-id \
+            -e GOOGLE_CLIENT_SECRET=test-secret \
+            -e SESSION_SECRET=test-session-secret-32chars-min \
+            -e NEXT_PUBLIC_APP_URL=http://localhost:8080 \
+            -e ALLOWED_DOMAINS=vectorinstitute.ai \
             onboarding-status-web:${{ github.sha }}
 
           # Wait for container to start and verify it stays running
@@ -232,7 +237,7 @@ jobs:
             --min-instances=0 \
             --concurrency=80 \
             --port=8080 \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ env.FIRESTORE_DATABASE_ID }},GITHUB_TOKEN=${{ secrets.GH_ORG_TOKEN }},DEPLOYMENT_SHA=${{ github.sha }}" \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ env.FIRESTORE_DATABASE_ID }},GITHUB_TOKEN=${{ secrets.GH_ORG_TOKEN }},DEPLOYMENT_SHA=${{ github.sha }},NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }},SESSION_SECRET=${{ secrets.SESSION_SECRET }},NEXT_PUBLIC_APP_URL=${{ secrets.APP_URL }},REDIRECT_URI=${{ secrets.REDIRECT_URI }},ALLOWED_DOMAINS=vectorinstitute.ai" \
             --update-labels="deployed-by=github-actions,commit=${{ github.sha }}" \
             --update-annotations="git-commit=${{ github.sha }},git-ref=${{ github.ref }},deployed-at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --quiet
