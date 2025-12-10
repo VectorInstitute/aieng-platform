@@ -18,11 +18,10 @@ from typing import Any
 
 
 try:
-    from google.cloud import storage
+    from google.cloud import firestore, storage
 except ImportError:
-    print(
-        "Error: google-cloud-storage not installed. Run: pip install google-cloud-storage"
-    )
+    print("Error: google-cloud-storage or google-cloud-firestore not installed.")
+    print("Run: pip install google-cloud-storage google-cloud-firestore")
     sys.exit(1)
 
 
@@ -45,12 +44,59 @@ def run_command(cmd: list[str]) -> Any:
         sys.exit(1)
 
 
-def fetch_workspaces() -> list[dict[str, Any]]:
-    """Fetch all workspaces using Coder CLI."""
+def get_team_mappings() -> dict[str, str]:
+    """Get team mappings from Firestore.
+
+    Returns a dict mapping github_handle (lowercase) -> team_name.
+    """
+    print("Fetching team mappings from Firestore...")
+
+    project_id = "coderd"
+    database_id = "onboarding"
+
+    db = firestore.Client(project=project_id, database=database_id)
+
+    mappings = {}
+    participants = db.collection("participants").stream()
+
+    for doc in participants:
+        data = doc.to_dict()
+        if data:
+            github_handle = doc.id.lower()
+            team_name = data.get("team_name", "Unassigned")
+            mappings[github_handle] = team_name
+
+    print(f"✓ Loaded {len(mappings)} participant team mappings")
+    return mappings
+
+
+def fetch_workspaces(team_mappings: dict[str, str]) -> list[dict[str, Any]]:
+    """Fetch all workspaces using Coder CLI and filter out excluded teams."""
     print("Fetching workspaces from Coder...")
     workspaces = run_command(["coder", "list", "-a", "-o", "json"])
-    print(f"✓ Fetched {len(workspaces)} workspaces")
-    return workspaces
+
+    # Teams to exclude from analytics
+    excluded_teams = ["facilitators", "Unassigned"]
+
+    original_count = len(workspaces)
+
+    # Filter out workspaces owned by users in excluded teams
+    filtered_workspaces = []
+    for ws in workspaces:
+        owner_name = ws.get("owner_name", "").lower()
+        team_name = team_mappings.get(owner_name, "Unassigned")
+
+        if team_name not in excluded_teams:
+            filtered_workspaces.append(ws)
+
+    filtered_count = original_count - len(filtered_workspaces)
+    if filtered_count > 0:
+        print(
+            f"✓ Filtered out {filtered_count} workspaces from excluded teams: {', '.join(excluded_teams)}"
+        )
+
+    print(f"✓ Fetched {len(filtered_workspaces)} workspaces")
+    return filtered_workspaces
 
 
 def fetch_templates() -> list[dict[str, Any]]:
@@ -156,8 +202,11 @@ def main() -> None:
     bucket_name = "coder-analytics-snapshots"
     save_local = "--local" in sys.argv
 
-    # Fetch data
-    workspaces = fetch_workspaces()
+    # Fetch team mappings first
+    team_mappings = get_team_mappings()
+
+    # Fetch data (with filtering)
+    workspaces = fetch_workspaces(team_mappings)
     templates = fetch_templates()
 
     # Create snapshot
