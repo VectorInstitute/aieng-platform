@@ -8,6 +8,7 @@ license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
     "google-cloud-firestore>=2.18.0",
+    "google-cloud-storage",
     "google-auth>=2.29.0",
     "google-cloud-secret-manager>=2.20.0",
     "firebase-admin>=6.5.0",

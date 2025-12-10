@@ -1,0 +1,91 @@
+name: Collect Coder Analytics
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:  # Allow manual triggers
+
+env:
+  CODER_URL: https://platform.vectorinstitute.ai
+
+jobs:
+  collect:
+    name: Collect Workspace Analytics
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for GCP authentication
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          echo "Installing Python dependencies..."
+          pip install -e .
+          echo "✓ Dependencies installed"
+
+      - name: Install Coder CLI
+        run: |
+          echo "Installing Coder CLI..."
+          curl -fsSL https://coder.com/install.sh | sh
+          coder version
+          echo "✓ Coder CLI installed successfully"
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Authenticate with Coder
+        env:
+          CODER_SESSION_TOKEN: ${{ secrets.CODER_TOKEN }}
+        run: |
+          echo "Authenticating with Coder..."
+          echo "$CODER_SESSION_TOKEN" | coder login "$CODER_URL" --token
+          echo "✓ Authenticated to Coder"
+
+      - name: Collect and upload analytics
+        run: |
+          echo "Running analytics collection script..."
+          python3 scripts/collect_coder_analytics.py
+
+      - name: Generate summary
+        if: success()
+        run: |
+          # Read the latest snapshot to get counts
+          SNAPSHOT=$(gsutil cat gs://coder-analytics-snapshots/latest.json)
+          WORKSPACE_COUNT=$(echo "$SNAPSHOT" | jq '[.workspaces[]? // []] | length')
+          TEMPLATE_COUNT=$(echo "$SNAPSHOT" | jq '[.templates[]? // []] | length')
+          TIMESTAMP=$(echo "$SNAPSHOT" | jq -r '.timestamp')
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 📊 Coder Analytics Collection Summary
+
+          **Timestamp:** $TIMESTAMP
+
+          ### Data Collected
+          - **Workspaces:** $WORKSPACE_COUNT
+          - **Templates:** $TEMPLATE_COUNT
+
+          ### Storage
+          - **Bucket:** \`gs://coder-analytics-snapshots/\`
+          - **Latest:** [latest.json](https://console.cloud.google.com/storage/browser/coder-analytics-snapshots)
+
+          ---
+          *Next collection scheduled in 6 hours*
+          EOF
