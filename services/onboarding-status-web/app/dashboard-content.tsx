@@ -112,8 +112,8 @@ export default function DashboardContent({ user }: DashboardContentProps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
         <div className="text-center">
-          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-vector-magenta border-r-transparent"></div>
-          <p className="mt-4 text-slate-700 dark:text-slate-300 font-semibold">Loading participant data...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-vector-magenta dark:border-vector-violet mx-auto"></div>
+          <p className="mt-4 text-slate-600 dark:text-slate-400">Loading participant data...</p>
         </div>
       </div>
     );
@@ -465,7 +465,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
                       {renderGitHubStatus(participant.github_status)}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-vector-cobalt/10 text-vector-cobalt dark:bg-vector-cobalt/20 dark:text-vector-cobalt border border-vector-cobalt/30">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600">
                         {participant.team_name}
                       </span>
                     </td>

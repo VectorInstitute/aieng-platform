@@ -8,6 +8,7 @@ license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
     "google-cloud-firestore>=2.18.0",
+    "google-cloud-storage",
     "google-auth>=2.29.0",
     "google-cloud-secret-manager>=2.20.0",
     "firebase-admin>=6.5.0",
@@ -17,6 +18,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "rich>=13.0.0",
     "pandas>=2.3.3",
+    "urllib3>=2.6.0",  # Pinning version to address vulnerabilities GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
 ]
 
 [project.scripts]

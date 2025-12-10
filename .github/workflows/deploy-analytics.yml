@@ -1,16 +1,16 @@
-name: Deploy Onboarding Status Web
+name: Deploy Analytics
 
 on:
   push:
     branches: [main]
     paths:
-      - 'services/onboarding-status-web/**'
-      - '.github/workflows/deploy-onboarding-status-web.yml'
+      - 'services/analytics/**'
+      - '.github/workflows/deploy-analytics.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'services/onboarding-status-web/**'
-      - '.github/workflows/deploy-onboarding-status-web.yml'
+      - 'services/analytics/**'
+      - '.github/workflows/deploy-analytics.yml'
   workflow_dispatch:  # Allow manual triggers
 
 # Prevent concurrent deployments
@@ -21,10 +21,11 @@ concurrency:
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   GAR_LOCATION: us-central1
-  REPOSITORY: onboarding-status
-  SERVICE_NAME: onboarding-status-web
+  REPOSITORY: analytics
+  SERVICE_NAME: analytics
   REGION: us-central1
   FIRESTORE_DATABASE_ID: onboarding
+  GCS_BUCKET: coder-analytics-snapshots
 
 jobs:
   # Build and test the Next.js application
@@ -66,13 +67,13 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
-          context: ./services/onboarding-status-web
-          file: ./services/onboarding-status-web/Dockerfile
+          context: ./services/analytics
+          file: ./services/analytics/Dockerfile
           push: false
           load: true
-          tags: onboarding-status-web:${{ github.sha }}
-          cache-from: type=gha,scope=onboarding-status-web
-          cache-to: type=gha,mode=max,scope=onboarding-status-web
+          tags: analytics:${{ github.sha }}
+          cache-from: type=gha,scope=analytics
+          cache-to: type=gha,mode=max,scope=analytics
 
       # Test container (skip on main push since tests already ran in PR)
       - name: Test container
@@ -82,26 +83,26 @@ jobs:
 
           echo "Starting Next.js container..."
           docker run -d \
-            --name onboarding-status-test \
+            --name analytics-test \
             -p 8080:8080 \
             -e GCP_PROJECT_ID=test \
             -e FIRESTORE_DATABASE_ID=test \
-            -e GITHUB_TOKEN=test \
+            -e GCS_BUCKET_NAME=test \
             -e NEXT_PUBLIC_GOOGLE_CLIENT_ID=test-client-id \
             -e GOOGLE_CLIENT_SECRET=test-secret \
             -e SESSION_SECRET=test-session-secret-32chars-min \
             -e NEXT_PUBLIC_APP_URL=http://localhost:8080 \
             -e ALLOWED_DOMAINS=vectorinstitute.ai \
-            onboarding-status-web:${{ github.sha }}
+            analytics:${{ github.sha }}
 
           # Wait for container to start and verify it stays running
           echo "Waiting for container to start..."
           sleep 15
 
           # Check if container is still running
-          if [ "$(docker inspect --format='{{.State.Status}}' onboarding-status-test)" != "running" ]; then
+          if [ "$(docker inspect --format='{{.State.Status}}' analytics-test)" != "running" ]; then
             echo "✗ Container stopped unexpectedly"
-            docker logs onboarding-status-test
+            docker logs analytics-test
             exit 1
           fi
 
@@ -109,7 +110,7 @@ jobs:
 
           # Check logs for successful Next.js startup
           echo "Checking container logs..."
-          docker logs onboarding-status-test 2>&1 | grep -q "Ready in" && echo "✓ Next.js server is ready" || echo "⚠ Could not confirm Next.js ready state"
+          docker logs analytics-test 2>&1 | grep -q "Ready in" && echo "✓ Next.js server is ready" || echo "⚠ Could not confirm Next.js ready state"
 
           # Note: We don't test API endpoints here because they require valid GCP credentials
           # Full health checks are performed during deployment with real credentials
@@ -119,11 +120,11 @@ jobs:
       - name: Cleanup test container
         if: always()
         run: |
-          docker stop onboarding-status-test || true
-          docker rm onboarding-status-test || true
+          docker stop analytics-test || true
+          docker rm analytics-test || true
           # Keep image if pushing to main, otherwise remove it
           if [ "${{ github.ref }}" != "refs/heads/main" ] || [ "${{ github.event_name }}" != "push" ]; then
-            docker rmi onboarding-status-web:${{ github.sha }} || true
+            docker rmi analytics:${{ github.sha }} || true
           fi
 
       # Push image to GAR (only on main push)
@@ -156,7 +157,7 @@ jobs:
             gcloud artifacts repositories create ${{ env.REPOSITORY }} \
               --repository-format=docker \
               --location=${{ env.GAR_LOCATION }} \
-              --description="Docker repository for Onboarding Status Dashboard" \
+              --description="Docker repository for Coder Analytics Dashboard" \
               --quiet
             echo "✓ Repository created"
           else
@@ -172,8 +173,8 @@ jobs:
           LATEST_URL="${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:latest"
 
           echo "Tagging image..."
-          docker tag onboarding-status-web:${{ github.sha }} "$IMAGE_URL"
-          docker tag onboarding-status-web:${{ github.sha }} "$LATEST_URL"
+          docker tag analytics:${{ github.sha }} "$IMAGE_URL"
+          docker tag analytics:${{ github.sha }} "$LATEST_URL"
 
           echo "Pushing image to GAR..."
           docker push "$IMAGE_URL"
@@ -237,7 +238,7 @@ jobs:
             --min-instances=0 \
             --concurrency=80 \
             --port=8080 \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ env.FIRESTORE_DATABASE_ID }},GITHUB_TOKEN=${{ secrets.GH_ORG_TOKEN }},DEPLOYMENT_SHA=${{ github.sha }},NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }},SESSION_SECRET=${{ secrets.SESSION_SECRET }},NEXT_PUBLIC_APP_URL=${{ secrets.APP_URL }},REDIRECT_URI=${{ secrets.ONBOARDING_REDIRECT_URI }},ALLOWED_DOMAINS=vectorinstitute.ai" \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ env.FIRESTORE_DATABASE_ID }},GCS_BUCKET_NAME=${{ env.GCS_BUCKET }},DEPLOYMENT_SHA=${{ github.sha }},NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }},SESSION_SECRET=${{ secrets.SESSION_SECRET }},NEXT_PUBLIC_APP_URL=${{ secrets.APP_URL }},REDIRECT_URI=${{ secrets.ANALYTICS_REDIRECT_URI }},ALLOWED_DOMAINS=vectorinstitute.ai" \
             --update-labels="deployed-by=github-actions,commit=${{ github.sha }}" \
             --update-annotations="git-commit=${{ github.sha }},git-ref=${{ github.ref }},deployed-at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --quiet
@@ -277,27 +278,16 @@ jobs:
           BACKOFF=5
 
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            # Test the participants API endpoint
-            if curl -sf --max-time 10 "${SERVICE_URL}/onboarding/api/participants" > /dev/null 2>&1; then
-              echo "✓ Health check passed - API is responding"
+            # Test the snapshot API endpoint (requires auth but should return 401/403 not 500)
+            HTTP_CODE=$(curl -sf -w "%{http_code}" --max-time 10 "${SERVICE_URL}/analytics/api/snapshot" -o /dev/null || echo "000")
 
-              # Test GitHub status endpoint
-              STATUS_RESPONSE=$(curl -sf --max-time 10 -X POST \
-                -H "Content-Type: application/json" \
-                -d '{"github_handles":["test"]}' \
-                "${SERVICE_URL}/onboarding/api/github-status" || echo "")
-
-              if [ -n "$STATUS_RESPONSE" ]; then
-                echo "✓ GitHub status endpoint is responding"
-              else
-                echo "⚠ Warning: GitHub status endpoint did not respond"
-              fi
-
+            if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ] || [ "$HTTP_CODE" = "200" ]; then
+              echo "✓ Health check passed - API is responding (HTTP $HTTP_CODE)"
               exit 0
             fi
 
             RETRY_COUNT=$((RETRY_COUNT + 1))
-            echo "Attempt $RETRY_COUNT/$MAX_RETRIES failed, waiting ${BACKOFF}s..."
+            echo "Attempt $RETRY_COUNT/$MAX_RETRIES failed (HTTP $HTTP_CODE), waiting ${BACKOFF}s..."
             sleep $BACKOFF
 
             # Exponential backoff (max 30s)
@@ -321,14 +311,19 @@ jobs:
           **Branch:** \`${{ github.ref_name }}\`
           **Triggered by:** @${{ github.actor }}
 
-          ### Onboarding Status Dashboard
-          - **URL:** ${{ steps.deploy.outputs.url }}/onboarding
+          ### Coder Analytics Dashboard
+          - **URL:** ${{ steps.deploy.outputs.url }}/analytics
           - **Revision:** \`${{ steps.deploy.outputs.revision }}\`
           - **Status:** ✅ Deployed
 
           **API Endpoints:**
-          - Participants: ${{ steps.deploy.outputs.url }}/onboarding/api/participants
-          - GitHub Status: ${{ steps.deploy.outputs.url }}/onboarding/api/github-status
+          - Snapshot: ${{ steps.deploy.outputs.url }}/analytics/api/snapshot
+          - Teams: ${{ steps.deploy.outputs.url }}/analytics/api/teams
+
+          **Data Collection:**
+          - Workflow: \`.github/workflows/collect-coder-analytics.yml\`
+          - Schedule: Every 6 hours
+          - Storage: \`gs://${{ env.GCS_BUCKET }}\`
 
           ---
           *Deployment completed at $(date -u +"%Y-%m-%d %H:%M:%S UTC")*
