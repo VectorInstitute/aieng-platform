@@ -215,7 +215,7 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                       </Tooltip>
                     </th>
                     <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                      <Tooltip content="Sum of all workspace lifetime hours for this team">
+                      <Tooltip content="Sum of workspace usage hours (time from first connection to last connection) for this team">
                         Total Hours
                       </Tooltip>
                     </th>

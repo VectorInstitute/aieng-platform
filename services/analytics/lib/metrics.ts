@@ -39,6 +39,47 @@ function hoursBetween(date1: Date, date2: Date): number {
 }
 
 /**
+ * Calculate workspace usage hours based on agent connection window
+ * Uses first_connected_at to last_connected_at for more accurate usage tracking
+ */
+function calculateWorkspaceUsageHours(workspace: CoderWorkspace): number {
+  try {
+    const resources = workspace.latest_build?.resources || [];
+    let earliestConnection: Date | null = null;
+    let latestConnection: Date | null = null;
+
+    for (const resource of resources) {
+      const agents = resource.agents || [];
+      for (const agent of agents) {
+        if (agent.first_connected_at) {
+          const firstConnected = new Date(agent.first_connected_at);
+          if (!earliestConnection || firstConnected < earliestConnection) {
+            earliestConnection = firstConnected;
+          }
+        }
+        if (agent.last_connected_at) {
+          const lastConnected = new Date(agent.last_connected_at);
+          if (!latestConnection || lastConnected > latestConnection) {
+            latestConnection = lastConnected;
+          }
+        }
+      }
+    }
+
+    // If we have both connection timestamps, calculate the usage window
+    if (earliestConnection && latestConnection) {
+      return hoursBetween(earliestConnection, latestConnection);
+    }
+
+    // Fallback: if no connections yet, workspace has 0 usage hours
+    return 0;
+  } catch (error) {
+    console.warn(`Error calculating usage hours for workspace ${workspace.id}:`, error);
+    return 0;
+  }
+}
+
+/**
  * Classify activity status based on days since last active
  */
 function classifyActivityStatus(daysSinceActive: number): ActivityStatus {
@@ -161,7 +202,7 @@ export function enrichWorkspaceData(
     const lastActive = getLastActiveTimestamp(workspace);
     const daysSinceActive = daysBetween(new Date(lastActive), now);
     const daysSinceCreated = daysBetween(new Date(workspace.created_at), now);
-    const workspaceHours = hoursBetween(new Date(workspace.created_at), now);
+    const workspaceHours = calculateWorkspaceUsageHours(workspace);
 
     // Determine full name
     let ownerName = workspace.owner_name;

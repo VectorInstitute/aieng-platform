@@ -52,7 +52,7 @@ export function TemplatesTable({ templates }: TemplatesTableProps) {
                 </Tooltip>
               </th>
               <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                <Tooltip content="Sum of all workspace lifetime hours (from creation to now) for this template" position="right">
+                <Tooltip content="Sum of workspace usage hours (time from first connection to last connection) for this template" position="right">
                   Total Hours
                 </Tooltip>
               </th>
