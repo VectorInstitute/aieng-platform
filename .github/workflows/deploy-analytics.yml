@@ -238,7 +238,7 @@ jobs:
             --min-instances=0 \
             --concurrency=80 \
             --port=8080 \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ env.FIRESTORE_DATABASE_ID }},GCS_BUCKET_NAME=${{ env.GCS_BUCKET }},DEPLOYMENT_SHA=${{ github.sha }},NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }},SESSION_SECRET=${{ secrets.SESSION_SECRET }},NEXT_PUBLIC_APP_URL=${{ secrets.APP_URL }},REDIRECT_URI=${{ secrets.REDIRECT_URI }},ALLOWED_DOMAINS=vectorinstitute.ai" \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},FIRESTORE_DATABASE_ID=${{ env.FIRESTORE_DATABASE_ID }},GCS_BUCKET_NAME=${{ env.GCS_BUCKET }},DEPLOYMENT_SHA=${{ github.sha }},NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }},SESSION_SECRET=${{ secrets.SESSION_SECRET }},NEXT_PUBLIC_APP_URL=${{ secrets.APP_URL }},REDIRECT_URI=${{ secrets.ANALYTICS_REDIRECT_URI }},ALLOWED_DOMAINS=vectorinstitute.ai" \
             --update-labels="deployed-by=github-actions,commit=${{ github.sha }}" \
             --update-annotations="git-commit=${{ github.sha }},git-ref=${{ github.ref }},deployed-at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --quiet
