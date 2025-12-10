@@ -47,13 +47,13 @@ export function TemplatesTable({ templates }: TemplatesTableProps) {
                 </Tooltip>
               </th>
               <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                <Tooltip content="Sum of all workspace lifetime hours (from creation to now) for this template" position="right">
-                  Total Hours
+                <Tooltip content="Number of unique users who have used this template in the last 7 days">
+                  Active Users
                 </Tooltip>
               </th>
               <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                <Tooltip content="Average workspace lifetime hours across all workspaces for this template" position="right">
-                  Avg Hours
+                <Tooltip content="Sum of all workspace lifetime hours (from creation to now) for this template" position="right">
+                  Total Hours
                 </Tooltip>
               </th>
               <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
@@ -95,11 +95,13 @@ export function TemplatesTable({ templates }: TemplatesTableProps) {
                     {template.active_workspaces}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-right text-sm text-slate-700 dark:text-slate-300">
-                  {template.total_workspace_hours.toLocaleString()}h
+                <td className="px-6 py-4 text-right text-sm">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-vector-violet/10 text-vector-violet border border-vector-violet/30">
+                    {template.unique_active_users}
+                  </span>
                 </td>
                 <td className="px-6 py-4 text-right text-sm text-slate-700 dark:text-slate-300">
-                  {template.avg_workspace_hours.toLocaleString()}h
+                  {template.total_workspace_hours.toLocaleString()}h
                 </td>
                 <td className="px-6 py-4 text-right">
                   <Link

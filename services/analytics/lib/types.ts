@@ -138,6 +138,7 @@ export interface TeamMetrics {
 
   // Counts
   total_workspaces: number;
+  unique_active_users: number;    // Number of unique users with activity in last 7 days
 
   // Time-based metrics
   total_workspace_hours: number;  // Sum of all workspace lifetime hours
@@ -187,6 +188,7 @@ export interface TemplateMetrics {
   template_display_name: string;
   total_workspaces: number;
   active_workspaces: number;
+  unique_active_users: number;    // Number of unique users with activity in last 7 days
   total_workspace_hours: number;  // Sum of all workspace lifetime hours for this template
   avg_workspace_hours: number;    // Average workspace lifetime hours
   team_distribution: Record<string, number>;
