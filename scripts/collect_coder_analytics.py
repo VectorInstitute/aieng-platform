@@ -11,10 +11,13 @@ This script:
 """
 
 import json
+import os
 import subprocess
 import sys
 from datetime import UTC, datetime
 from typing import Any
+
+import requests
 
 
 try:
@@ -44,10 +47,132 @@ def run_command(cmd: list[str]) -> Any:
         sys.exit(1)
 
 
+def get_coder_api_config() -> tuple[str, str]:
+    """Get Coder API URL and session token from environment.
+
+    Returns
+    -------
+    tuple[str, str]
+        Tuple of (api_url, session_token)
+    """
+    # Get API URL from environment or use default
+    api_url = os.getenv("CODER_URL", "https://platform.vectorinstitute.ai")
+
+    # Get token from environment (try CODER_TOKEN or CODER_SESSION_TOKEN)
+    session_token = os.getenv("CODER_TOKEN") or os.getenv("CODER_SESSION_TOKEN")
+    if not session_token:
+        print("Error: CODER_TOKEN or CODER_SESSION_TOKEN environment variable not set")
+        sys.exit(1)
+
+    return api_url, session_token
+
+
+def fetch_workspace_builds(
+    workspace_id: str, api_url: str, session_token: str
+) -> list[dict[str, Any]]:
+    """Fetch all builds for a workspace using the Coder API.
+
+    Parameters
+    ----------
+    workspace_id : str
+        The UUID of the workspace
+    api_url : str
+        The Coder API base URL
+    session_token : str
+        The Coder session token for authentication
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        List of build objects for this workspace
+    """
+    url = f"{api_url}/api/v2/workspaces/{workspace_id}/builds"
+    headers = {"Coder-Session-Token": session_token}
+
+    try:
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        print(f"Warning: Failed to fetch builds for workspace {workspace_id}: {e}")
+        return []
+
+
+def calculate_build_usage_hours(build: dict[str, Any]) -> float:
+    """Calculate usage hours for a single build based on agent connection times.
+
+    Parameters
+    ----------
+    build : dict[str, Any]
+        A build object containing resources and agents
+
+    Returns
+    -------
+    float
+        Usage hours for this build (0 if no valid connection data)
+    """
+    try:
+        resources = build.get("resources", [])
+        earliest_connection = None
+        latest_connection = None
+
+        for resource in resources:
+            agents = resource.get("agents", [])
+            for agent in agents:
+                first_connected = agent.get("first_connected_at")
+                last_connected = agent.get("last_connected_at")
+
+                if first_connected:
+                    first_dt = datetime.fromisoformat(
+                        first_connected.replace("Z", "+00:00")
+                    )
+                    if earliest_connection is None or first_dt < earliest_connection:
+                        earliest_connection = first_dt
+
+                if last_connected:
+                    last_dt = datetime.fromisoformat(
+                        last_connected.replace("Z", "+00:00")
+                    )
+                    if latest_connection is None or last_dt > latest_connection:
+                        latest_connection = last_dt
+
+        # Calculate hours between first and last connection
+        if earliest_connection and latest_connection:
+            delta = latest_connection - earliest_connection
+            return delta.total_seconds() / 3600.0
+
+        return 0.0
+    except Exception as e:
+        print(f"Warning: Error calculating build usage hours: {e}")
+        return 0.0
+
+
+def calculate_workspace_total_usage(builds: list[dict[str, Any]]) -> float:
+    """Calculate total usage hours across all builds for a workspace.
+
+    Parameters
+    ----------
+    builds : list[dict[str, Any]]
+        List of build objects for a workspace
+
+    Returns
+    -------
+    float
+        Total usage hours summed across all builds
+    """
+    total_hours = 0.0
+    for build in builds:
+        total_hours += calculate_build_usage_hours(build)
+    return total_hours
+
+
 def get_team_mappings() -> dict[str, str]:
     """Get team mappings from Firestore.
 
-    Returns a dict mapping github_handle (lowercase) -> team_name.
+    Returns
+    -------
+    dict[str, str]
+        Mapping of github_handle (lowercase) -> team_name
     """
     print("Fetching team mappings from Firestore...")
 
@@ -70,8 +195,25 @@ def get_team_mappings() -> dict[str, str]:
     return mappings
 
 
-def fetch_workspaces(team_mappings: dict[str, str]) -> list[dict[str, Any]]:
-    """Fetch all workspaces using Coder CLI and filter out excluded teams."""
+def fetch_workspaces(
+    team_mappings: dict[str, str], api_url: str, session_token: str
+) -> list[dict[str, Any]]:
+    """Fetch all workspaces using Coder CLI and enrich with build history.
+
+    Parameters
+    ----------
+    team_mappings : dict[str, str]
+        Mapping of github_handle -> team_name
+    api_url : str
+        Coder API base URL
+    session_token : str
+        Coder session token for API authentication
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        List of workspace objects with builds and usage hours
+    """
     print("Fetching workspaces from Coder...")
     workspaces = run_command(["coder", "list", "-a", "-o", "json"])
 
@@ -96,6 +238,25 @@ def fetch_workspaces(team_mappings: dict[str, str]) -> list[dict[str, Any]]:
         )
 
     print(f"✓ Fetched {len(filtered_workspaces)} workspaces")
+
+    # Enrich workspaces with full build history and usage hours
+    print("Enriching workspaces with build history...")
+    for i, workspace in enumerate(filtered_workspaces, 1):
+        workspace_id = workspace.get("id")
+        if workspace_id:
+            # Fetch all builds for this workspace
+            builds = fetch_workspace_builds(workspace_id, api_url, session_token)
+            workspace["all_builds"] = builds
+
+            # Calculate total usage hours across all builds
+            total_usage_hours = calculate_workspace_total_usage(builds)
+            workspace["total_usage_hours"] = round(total_usage_hours, 2)
+
+        # Progress indicator
+        if i % 10 == 0:
+            print(f"  Processed {i}/{len(filtered_workspaces)} workspaces...")
+
+    print(f"✓ Enriched {len(filtered_workspaces)} workspaces with build history")
     return filtered_workspaces
 
 
@@ -202,11 +363,15 @@ def main() -> None:
     bucket_name = "coder-analytics-snapshots"
     save_local = "--local" in sys.argv
 
+    # Get Coder API configuration
+    api_url, session_token = get_coder_api_config()
+    print(f"✓ Using Coder API: {api_url}")
+
     # Fetch team mappings first
     team_mappings = get_team_mappings()
 
-    # Fetch data (with filtering)
-    workspaces = fetch_workspaces(team_mappings)
+    # Fetch data (with filtering and build enrichment)
+    workspaces = fetch_workspaces(team_mappings, api_url, session_token)
     templates = fetch_templates()
 
     # Create snapshot

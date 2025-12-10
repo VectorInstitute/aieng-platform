@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Users } from 'lucide-react';
+import { ArrowLeft, Users, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import type { User } from '@vector-institute/aieng-auth-core';
 import type { AnalyticsSnapshot, TeamMetrics } from '@/lib/types';
 import { Tooltip } from '@/app/components/tooltip';
+
+type SortColumn = 'team_name' | 'workspaces_for_template' | 'unique_active_users' | 'total_workspace_hours' | 'active_days';
+type SortDirection = 'asc' | 'desc';
 
 interface TemplateTeamsContentProps {
   user: User | null;
@@ -16,6 +19,8 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
   const [data, setData] = useState<AnalyticsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortColumn, setSortColumn] = useState<SortColumn>('workspaces_for_template');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const handleLogout = async () => {
     try {
@@ -46,6 +51,72 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Find the template
+  const template = data?.template_metrics.find(t => t.template_name === decodeURIComponent(templateName));
+
+  // Filter team metrics for this template
+  const templateTeams: (TeamMetrics & { workspaces_for_template: number })[] = useMemo(() => {
+    if (!data || !template) return [];
+
+    return data.team_metrics
+      .map(team => {
+        const workspacesForTemplate = template.team_distribution[team.team_name] || 0;
+        return {
+          ...team,
+          workspaces_for_template: workspacesForTemplate
+        };
+      })
+      .filter(team => team.workspaces_for_template > 0);
+  }, [data, template]);
+
+  // Sort template teams
+  const sortedTemplateTeams = useMemo(() => {
+    const sorted = [...templateTeams].sort((a, b) => {
+      let aValue: string | number = a[sortColumn];
+      let bValue: string | number = b[sortColumn];
+
+      // Handle null/undefined values
+      if (aValue === null || aValue === undefined) aValue = sortColumn === 'team_name' ? '' : 0;
+      if (bValue === null || bValue === undefined) bValue = sortColumn === 'team_name' ? '' : 0;
+
+      // For strings, use locale compare
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      // For numbers
+      return sortDirection === 'asc'
+        ? (aValue as number) - (bValue as number)
+        : (bValue as number) - (aValue as number);
+    });
+
+    return sorted;
+  }, [templateTeams, sortColumn, sortDirection]);
+
+  // Handle column header click
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  // Get sort icon for a column
+  const getSortIcon = (column: SortColumn) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="w-3 h-3 opacity-50" />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="w-3 h-3" />
+    ) : (
+      <ArrowDown className="w-3 h-3" />
+    );
+  };
 
   // Loading state
   if (loading && !data) {
@@ -78,9 +149,6 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
 
   if (!data) return null;
 
-  // Find the template
-  const template = data.template_metrics.find(t => t.template_name === decodeURIComponent(templateName));
-
   if (!template) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
@@ -96,18 +164,6 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
       </div>
     );
   }
-
-  // Filter team metrics for this template
-  const templateTeams: (TeamMetrics & { workspaces_for_template: number })[] = data.team_metrics
-    .map(team => {
-      const workspacesForTemplate = template.team_distribution[team.team_name] || 0;
-      return {
-        ...team,
-        workspaces_for_template: workspacesForTemplate
-      };
-    })
-    .filter(team => team.workspaces_for_template > 0)
-    .sort((a, b) => b.workspaces_for_template - a.workspaces_for_template);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
@@ -193,7 +249,7 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                 Teams Using This Template
               </h2>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                {templateTeams.length} teams have created workspaces from this template
+                {sortedTemplateTeams.length} teams have created workspaces from this template
               </p>
             </div>
 
@@ -201,33 +257,63 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
               <table className="w-full">
                 <thead className="bg-slate-100 dark:bg-slate-800 border-b-2 border-vector-magenta/20 dark:border-vector-violet/30">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                      Team
+                    <th
+                      className="px-6 py-4 text-left text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                      onClick={() => handleSort('team_name')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Team
+                        {getSortIcon('team_name')}
+                      </div>
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    <th
+                      className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                      onClick={() => handleSort('workspaces_for_template')}
+                    >
                       <Tooltip content="Number of workspaces created by this team from this template">
-                        Workspaces
+                        <div className="flex items-center justify-end gap-2">
+                          Workspaces
+                          {getSortIcon('workspaces_for_template')}
+                        </div>
                       </Tooltip>
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    <th
+                      className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                      onClick={() => handleSort('unique_active_users')}
+                    >
                       <Tooltip content="Number of unique team members who have used workspaces in the last 7 days">
-                        Active Users
+                        <div className="flex items-center justify-end gap-2">
+                          Active Users
+                          {getSortIcon('unique_active_users')}
+                        </div>
                       </Tooltip>
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                      <Tooltip content="Sum of all workspace lifetime hours for this team">
-                        Total Hours
+                    <th
+                      className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                      onClick={() => handleSort('total_workspace_hours')}
+                    >
+                      <Tooltip content="Sum of workspace usage hours (time from first connection to last connection) for this team">
+                        <div className="flex items-center justify-end gap-2">
+                          Total Hours
+                          {getSortIcon('total_workspace_hours')}
+                        </div>
                       </Tooltip>
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    <th
+                      className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                      onClick={() => handleSort('active_days')}
+                    >
                       <Tooltip content="Number of days with activity in the last 7 days for this team" position="right">
-                        Active Days
+                        <div className="flex items-center justify-end gap-2">
+                          Active Days
+                          {getSortIcon('active_days')}
+                        </div>
                       </Tooltip>
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {templateTeams.map((team) => (
+                  {sortedTemplateTeams.map((team) => (
                     <tr
                       key={team.team_name}
                       className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"

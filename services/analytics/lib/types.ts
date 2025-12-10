@@ -14,6 +14,8 @@ export interface CoderWorkspace {
   template_display_name: string;
   template_icon?: string;
   name?: string;
+  total_usage_hours?: number;  // Total usage hours across all builds (added by collection script)
+  all_builds?: any[];  // Full build history (added by collection script)
   latest_build: {
     id: string;
     created_at: string;
@@ -123,7 +125,7 @@ export interface WorkspaceMetrics {
   last_build_at: string;
   days_since_created: number;
   days_since_active: number;
-  workspace_hours: number;  // Total lifetime hours (from creation to now)
+  workspace_hours: number;  // Total usage hours (from first connection to last connection)
 
   // Build metrics
   total_builds: number;
@@ -141,8 +143,8 @@ export interface TeamMetrics {
   unique_active_users: number;    // Number of unique users with activity in last 7 days
 
   // Time-based metrics
-  total_workspace_hours: number;  // Sum of all workspace lifetime hours
-  avg_workspace_hours: number;    // Average workspace lifetime hours
+  total_workspace_hours: number;  // Sum of all workspace usage hours (first to last connection)
+  avg_workspace_hours: number;    // Average workspace usage hours (first to last connection)
   active_days: number;            // Number of unique days with workspace activity
 
   // Template breakdown
@@ -189,8 +191,8 @@ export interface TemplateMetrics {
   total_workspaces: number;
   active_workspaces: number;
   unique_active_users: number;    // Number of unique users with activity in last 7 days
-  total_workspace_hours: number;  // Sum of all workspace lifetime hours for this template
-  avg_workspace_hours: number;    // Average workspace lifetime hours
+  total_workspace_hours: number;  // Sum of workspace usage hours (first to last connection) for this template
+  avg_workspace_hours: number;    // Average workspace usage hours (first to last connection)
   team_distribution: Record<string, number>;
 }
 
