@@ -166,6 +166,56 @@ def calculate_workspace_total_usage(builds: list[dict[str, Any]]) -> float:
     return total_hours
 
 
+def fetch_user_activity_insights(
+    api_url: str, session_token: str, start_time: str, end_time: str
+) -> dict[str, float]:
+    """Fetch user activity insights from Coder API.
+
+    Parameters
+    ----------
+    api_url : str
+        The Coder API base URL
+    session_token : str
+        The Coder session token for authentication
+    start_time : str
+        Start time in ISO 8601 format (e.g., "2025-11-01T00:00:00Z")
+    end_time : str
+        End time in ISO 8601 format (e.g., "2025-12-10T00:00:00Z")
+
+    Returns
+    -------
+    dict[str, float]
+        Mapping of username (lowercase) -> active_hours
+    """
+    url = f"{api_url}/api/v2/insights/user-activity"
+    headers = {"Coder-Session-Token": session_token}
+    params = {"start_time": start_time, "end_time": end_time}
+
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+
+        # Create mapping of username -> active hours
+        activity_map = {}
+        users = data.get("report", {}).get("users", [])
+        for user in users:
+            username = user.get("username", "").lower()
+            seconds = user.get("seconds", 0)
+            hours = round(seconds / 3600.0, 2)
+            activity_map[username] = hours
+
+        return activity_map
+    except requests.RequestException as e:
+        print(f"Warning: Failed to fetch user activity insights: {e}")
+        try:
+            error_details = response.json() if response else {}
+            print(f"Error details: {error_details}")
+        except Exception:
+            pass
+        return {}
+
+
 def get_team_mappings() -> dict[str, str]:
     """Get team mappings from Firestore.
 
@@ -198,7 +248,7 @@ def get_team_mappings() -> dict[str, str]:
 def fetch_workspaces(
     team_mappings: dict[str, str], api_url: str, session_token: str
 ) -> list[dict[str, Any]]:
-    """Fetch all workspaces using Coder CLI and enrich with build history.
+    """Fetch workspaces using Coder CLI and enrich with build data.
 
     Parameters
     ----------
@@ -212,7 +262,7 @@ def fetch_workspaces(
     Returns
     -------
     list[dict[str, Any]]
-        List of workspace objects with builds and usage hours
+        List of workspace objects with builds, usage hours, and active hours
     """
     print("Fetching workspaces from Coder...")
     workspaces = run_command(["coder", "list", "-a", "-o", "json"])
@@ -239,8 +289,35 @@ def fetch_workspaces(
 
     print(f"✓ Fetched {len(filtered_workspaces)} workspaces")
 
+    # Fetch user activity insights (active hours)
+    # Use a wide time range to capture all activity
+    # Find earliest workspace creation date
+    print("Fetching user activity insights...")
+    earliest_created = min(
+        (
+            datetime.fromisoformat(ws.get("created_at", "").replace("Z", "+00:00"))
+            for ws in filtered_workspaces
+            if ws.get("created_at")
+        ),
+        default=datetime.now(UTC),
+    )
+    # Normalize to midnight (00:00:00) as required by the API
+    start_time = earliest_created.replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # Normalize end time to the start of the current hour (required by API)
+    now = datetime.now(UTC)
+    end_time = now.replace(minute=0, second=0, microsecond=0).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+
+    activity_map = fetch_user_activity_insights(
+        api_url, session_token, start_time, end_time
+    )
+    print(f"✓ Fetched activity data for {len(activity_map)} users")
+
     # Enrich workspaces with full build history and usage hours
-    print("Enriching workspaces with build history...")
+    print("Enriching workspaces with build history and active hours...")
     for i, workspace in enumerate(filtered_workspaces, 1):
         workspace_id = workspace.get("id")
         if workspace_id:
@@ -252,11 +329,17 @@ def fetch_workspaces(
             total_usage_hours = calculate_workspace_total_usage(builds)
             workspace["total_usage_hours"] = round(total_usage_hours, 2)
 
+        # Add active hours from activity insights
+        owner_name = workspace.get("owner_name", "").lower()
+        workspace["active_hours"] = activity_map.get(owner_name, 0.0)
+
         # Progress indicator
         if i % 10 == 0:
             print(f"  Processed {i}/{len(filtered_workspaces)} workspaces...")
 
-    print(f"✓ Enriched {len(filtered_workspaces)} workspaces with build history")
+    print(
+        f"✓ Enriched {len(filtered_workspaces)} workspaces with build history and active hours"
+    )
     return filtered_workspaces
 
 

@@ -52,8 +52,13 @@ export function TemplatesTable({ templates }: TemplatesTableProps) {
                 </Tooltip>
               </th>
               <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                <Tooltip content="Sum of workspace usage hours (time from first connection to last connection) for this template" position="right">
+                <Tooltip content="Sum of workspace usage hours (time from first connection to last connection) for this template">
                   Total Hours
+                </Tooltip>
+              </th>
+              <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                <Tooltip content="Sum of actual active interaction hours based on agent activity heartbeats (excludes idle time)" position="right">
+                  Active Hours
                 </Tooltip>
               </th>
               <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
@@ -102,6 +107,11 @@ export function TemplatesTable({ templates }: TemplatesTableProps) {
                 </td>
                 <td className="px-6 py-4 text-right text-sm text-slate-700 dark:text-slate-300">
                   {template.total_workspace_hours.toLocaleString()}h
+                </td>
+                <td className="px-6 py-4 text-right text-sm">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                    {template.total_active_hours.toLocaleString()}h
+                  </span>
                 </td>
                 <td className="px-6 py-4 text-right">
                   <Link
