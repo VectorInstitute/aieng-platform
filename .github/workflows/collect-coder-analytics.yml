@@ -60,6 +60,8 @@ jobs:
           echo "✓ Authenticated to Coder"
 
       - name: Collect and upload analytics
+        env:
+          CODER_SESSION_TOKEN: ${{ secrets.CODER_TOKEN }}
         run: |
           echo "Running analytics collection script..."
           python3 scripts/collect_coder_analytics.py
