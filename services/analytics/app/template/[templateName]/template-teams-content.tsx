@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, Users } from 'lucide-react';
 import type { User } from '@vector-institute/aieng-auth-core';
 import type { AnalyticsSnapshot, TeamMetrics } from '@/lib/types';
+import { Tooltip } from '@/app/components/tooltip';
 
 interface TemplateTeamsContentProps {
   user: User | null;
@@ -154,7 +155,7 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 pb-8">
         {/* Summary Cards */}
-        <div className="grid gap-6 md:grid-cols-4 mb-8 animate-fade-in">
+        <div className="grid gap-6 md:grid-cols-3 mb-8 animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-2 border-slate-200 dark:border-slate-700 p-6">
             <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
               Total Workspaces
@@ -181,15 +182,6 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
               {template.total_workspace_hours.toLocaleString()}h
             </div>
           </div>
-
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-2 border-slate-200 dark:border-slate-700 p-6">
-            <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Avg Hours
-            </div>
-            <div className="text-3xl font-bold text-slate-900 dark:text-white">
-              {template.avg_workspace_hours.toLocaleString()}h
-            </div>
-          </div>
         </div>
 
         {/* Teams Table */}
@@ -213,16 +205,24 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                       Team
                     </th>
                     <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                      Workspaces
+                      <Tooltip content="Number of workspaces created by this team from this template">
+                        Workspaces
+                      </Tooltip>
                     </th>
                     <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                      Total Hours
+                      <Tooltip content="Number of unique team members who have used workspaces in the last 7 days">
+                        Active Users
+                      </Tooltip>
                     </th>
                     <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                      Avg Hours
+                      <Tooltip content="Sum of all workspace lifetime hours for this team">
+                        Total Hours
+                      </Tooltip>
                     </th>
                     <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                      Active Days
+                      <Tooltip content="Number of days with activity in the last 7 days for this team" position="right">
+                        Active Days
+                      </Tooltip>
                     </th>
                   </tr>
                 </thead>
@@ -240,11 +240,13 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                       <td className="px-6 py-4 text-right text-sm text-slate-700 dark:text-slate-300">
                         {team.workspaces_for_template}
                       </td>
-                      <td className="px-6 py-4 text-right text-sm text-slate-700 dark:text-slate-300">
-                        {team.total_workspace_hours.toLocaleString()}h
+                      <td className="px-6 py-4 text-right text-sm">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-vector-violet/10 text-vector-violet border border-vector-violet/30">
+                          {team.unique_active_users}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-slate-700 dark:text-slate-300">
-                        {team.avg_workspace_hours.toLocaleString()}h
+                        {team.total_workspace_hours.toLocaleString()}h
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-vector-turquoise">
                         {team.active_days}

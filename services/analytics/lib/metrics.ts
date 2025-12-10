@@ -261,9 +261,18 @@ export function aggregateByTeam(workspaces: WorkspaceMetrics[]): TeamMetrics[] {
     // Sort members by last active (most recent first)
     members.sort((a, b) => new Date(b.last_active).getTime() - new Date(a.last_active).getTime());
 
+    // Count unique active users (users with at least one active workspace in last 7 days)
+    const activeUsers = new Set<string>();
+    teamWorkspaces.forEach((workspace) => {
+      if (workspace.activity_status === 'active') {
+        activeUsers.add(workspace.owner_github_handle);
+      }
+    });
+
     return {
       team_name: teamName,
       total_workspaces: teamWorkspaces.length,
+      unique_active_users: activeUsers.size,
       total_workspace_hours: Math.round(totalWorkspaceHours),
       avg_workspace_hours: Math.round(avgWorkspaceHours * 10) / 10,
       active_days: activeDates.size,
@@ -370,12 +379,19 @@ export function calculateTemplateMetrics(
       teamDistribution[workspace.team_name] = count + 1;
     });
 
+    // Count unique active users for this template (users with at least one active workspace in last 7 days)
+    const activeUsers = new Set<string>();
+    activeWorkspaces.forEach((workspace) => {
+      activeUsers.add(workspace.owner_github_handle);
+    });
+
     return {
       template_id: template.id,
       template_name: template.name,
       template_display_name: template.display_name,
       total_workspaces: templateWorkspaces.length,
       active_workspaces: activeWorkspaces.length,
+      unique_active_users: activeUsers.size,
       total_workspace_hours: Math.round(totalWorkspaceHours),
       avg_workspace_hours: Math.round(avgWorkspaceHours * 10) / 10,
       team_distribution: teamDistribution,
