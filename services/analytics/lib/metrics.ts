@@ -84,6 +84,19 @@ function getWorkspaceUsageHours(workspace: CoderWorkspace): number {
 }
 
 /**
+ * Get workspace active hours from pre-calculated field
+ * The collection script fetches this from Coder Insights API
+ */
+function getWorkspaceActiveHours(workspace: CoderWorkspace): number {
+  // Use pre-calculated active_hours from collection script
+  if (workspace.active_hours !== undefined && workspace.active_hours !== null) {
+    return workspace.active_hours;
+  }
+
+  return 0;
+}
+
+/**
  * Classify activity status based on days since last active
  */
 function classifyActivityStatus(daysSinceActive: number): ActivityStatus {
@@ -207,6 +220,7 @@ export function enrichWorkspaceData(
     const daysSinceActive = daysBetween(new Date(lastActive), now);
     const daysSinceCreated = daysBetween(new Date(workspace.created_at), now);
     const workspaceHours = getWorkspaceUsageHours(workspace);
+    const activeHours = getWorkspaceActiveHours(workspace);
 
     // Determine full name
     let ownerName = workspace.owner_name;
@@ -231,6 +245,7 @@ export function enrichWorkspaceData(
       days_since_created: daysSinceCreated,
       days_since_active: daysSinceActive,
       workspace_hours: workspaceHours,
+      active_hours: activeHours,
       total_builds: workspace.latest_build.build_number,
       last_build_status: workspace.latest_build.job?.status || 'unknown',
       activity_status: classifyActivityStatus(daysSinceActive),
@@ -262,6 +277,9 @@ export function aggregateByTeam(workspaces: WorkspaceMetrics[]): TeamMetrics[] {
 
     // Total workspace hours (sum of all workspace lifetime hours)
     const totalWorkspaceHours = teamWorkspaces.reduce((sum, w) => sum + w.workspace_hours, 0);
+
+    // Total active hours (sum of actual interaction hours from Insights API)
+    const totalActiveHours = teamWorkspaces.reduce((sum, w) => sum + w.active_hours, 0);
 
     // Average workspace hours
     const avgWorkspaceHours =
@@ -319,6 +337,7 @@ export function aggregateByTeam(workspaces: WorkspaceMetrics[]): TeamMetrics[] {
       total_workspaces: teamWorkspaces.length,
       unique_active_users: activeUsers.size,
       total_workspace_hours: Math.round(totalWorkspaceHours),
+      total_active_hours: Math.round(totalActiveHours),
       avg_workspace_hours: Math.round(avgWorkspaceHours * 10) / 10,
       active_days: activeDates.size,
       template_distribution: templateDistribution,
@@ -413,6 +432,9 @@ export function calculateTemplateMetrics(
     // Total workspace hours (sum of all workspace lifetime hours)
     const totalWorkspaceHours = templateWorkspaces.reduce((sum, w) => sum + w.workspace_hours, 0);
 
+    // Total active hours (sum of actual interaction hours from Insights API)
+    const totalActiveHours = templateWorkspaces.reduce((sum, w) => sum + w.active_hours, 0);
+
     // Average workspace hours
     const avgWorkspaceHours =
       templateWorkspaces.length > 0 ? totalWorkspaceHours / templateWorkspaces.length : 0;
@@ -438,6 +460,7 @@ export function calculateTemplateMetrics(
       active_workspaces: activeWorkspaces.length,
       unique_active_users: activeUsers.size,
       total_workspace_hours: Math.round(totalWorkspaceHours),
+      total_active_hours: Math.round(totalActiveHours),
       avg_workspace_hours: Math.round(avgWorkspaceHours * 10) / 10,
       team_distribution: teamDistribution,
     };

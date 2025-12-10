@@ -7,7 +7,7 @@ import type { User } from '@vector-institute/aieng-auth-core';
 import type { AnalyticsSnapshot, TeamMetrics } from '@/lib/types';
 import { Tooltip } from '@/app/components/tooltip';
 
-type SortColumn = 'team_name' | 'workspaces_for_template' | 'unique_active_users' | 'total_workspace_hours' | 'active_days';
+type SortColumn = 'team_name' | 'workspaces_for_template' | 'unique_active_users' | 'total_workspace_hours' | 'total_active_hours' | 'active_days';
 type SortDirection = 'asc' | 'desc';
 
 interface TemplateTeamsContentProps {
@@ -301,6 +301,17 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                     </th>
                     <th
                       className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                      onClick={() => handleSort('total_active_hours')}
+                    >
+                      <Tooltip content="Sum of actual active interaction hours based on agent activity heartbeats (excludes idle time)">
+                        <div className="flex items-center justify-end gap-2">
+                          Active Hours
+                          {getSortIcon('total_active_hours')}
+                        </div>
+                      </Tooltip>
+                    </th>
+                    <th
+                      className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                       onClick={() => handleSort('active_days')}
                     >
                       <Tooltip content="Number of days with activity in the last 7 days for this team" position="right">
@@ -333,6 +344,11 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-slate-700 dark:text-slate-300">
                         {team.total_workspace_hours.toLocaleString()}h
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                          {team.total_active_hours.toLocaleString()}h
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-vector-turquoise">
                         {team.active_days}
