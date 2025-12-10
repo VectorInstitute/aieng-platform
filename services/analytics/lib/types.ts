@@ -14,6 +14,8 @@ export interface CoderWorkspace {
   template_display_name: string;
   template_icon?: string;
   name?: string;
+  total_usage_hours?: number;  // Total usage hours across all builds (added by collection script)
+  all_builds?: any[];  // Full build history (added by collection script)
   latest_build: {
     id: string;
     created_at: string;

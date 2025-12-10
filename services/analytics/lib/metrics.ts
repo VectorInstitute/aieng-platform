@@ -39,10 +39,16 @@ function hoursBetween(date1: Date, date2: Date): number {
 }
 
 /**
- * Calculate workspace usage hours based on agent connection window
- * Uses first_connected_at to last_connected_at for more accurate usage tracking
+ * Get workspace usage hours from pre-calculated field or fallback to latest build
+ * The collection script calculates total usage across all builds
  */
-function calculateWorkspaceUsageHours(workspace: CoderWorkspace): number {
+function getWorkspaceUsageHours(workspace: CoderWorkspace): number {
+  // Use pre-calculated total_usage_hours from collection script if available
+  if (workspace.total_usage_hours !== undefined && workspace.total_usage_hours !== null) {
+    return workspace.total_usage_hours;
+  }
+
+  // Fallback: calculate from latest build only (less accurate)
   try {
     const resources = workspace.latest_build?.resources || [];
     let earliestConnection: Date | null = null;
@@ -66,12 +72,10 @@ function calculateWorkspaceUsageHours(workspace: CoderWorkspace): number {
       }
     }
 
-    // If we have both connection timestamps, calculate the usage window
     if (earliestConnection && latestConnection) {
       return hoursBetween(earliestConnection, latestConnection);
     }
 
-    // Fallback: if no connections yet, workspace has 0 usage hours
     return 0;
   } catch (error) {
     console.warn(`Error calculating usage hours for workspace ${workspace.id}:`, error);
@@ -202,7 +206,7 @@ export function enrichWorkspaceData(
     const lastActive = getLastActiveTimestamp(workspace);
     const daysSinceActive = daysBetween(new Date(lastActive), now);
     const daysSinceCreated = daysBetween(new Date(workspace.created_at), now);
-    const workspaceHours = calculateWorkspaceUsageHours(workspace);
+    const workspaceHours = getWorkspaceUsageHours(workspace);
 
     // Determine full name
     let ownerName = workspace.owner_name;
