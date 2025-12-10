@@ -330,6 +330,10 @@ def fetch_workspaces(
             workspace["total_usage_hours"] = round(total_usage_hours, 2)
 
         # Add active hours from activity insights
+        # NOTE: active_hours is per-USER (not per-workspace) and includes
+        # ALL TIME activity. Users with multiple workspaces will have the
+        # same value on each workspace. The frontend aggregation logic
+        # handles this correctly by counting each user once.
         owner_name = workspace.get("owner_name", "").lower()
         workspace["active_hours"] = activity_map.get(owner_name, 0.0)
 
