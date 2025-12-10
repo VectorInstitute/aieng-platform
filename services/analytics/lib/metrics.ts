@@ -97,6 +97,42 @@ function getWorkspaceActiveHours(workspace: CoderWorkspace): number {
 }
 
 /**
+ * Calculate total active hours for a group of workspaces, ensuring logical consistency
+ *
+ * Active hours from Insights API are per-user across all time (including deleted workspaces).
+ * To ensure active hours ≤ total hours, we cap each user's active hours at their total workspace hours.
+ *
+ * @param workspaces - Array of workspace metrics to aggregate
+ * @returns Total active hours across all unique users, capped at their workspace totals
+ */
+function calculateTotalActiveHours(workspaces: WorkspaceMetrics[]): number {
+  // Track active hours and total hours per unique user
+  const userActiveHours = new Map<string, number>();
+  const userTotalHours = new Map<string, number>();
+
+  workspaces.forEach((workspace) => {
+    const user = workspace.owner_github_handle;
+
+    // Active hours are per-user (same across all their workspaces), so take max
+    const existingActive = userActiveHours.get(user) || 0;
+    userActiveHours.set(user, Math.max(existingActive, workspace.active_hours));
+
+    // Total hours are per-workspace, so sum them up
+    const existingTotal = userTotalHours.get(user) || 0;
+    userTotalHours.set(user, existingTotal + workspace.workspace_hours);
+  });
+
+  // Cap each user's active hours at their total hours (handles deleted workspaces)
+  let totalActive = 0;
+  userActiveHours.forEach((activeHours, user) => {
+    const totalHours = userTotalHours.get(user) || 0;
+    totalActive += Math.min(activeHours, totalHours);
+  });
+
+  return totalActive;
+}
+
+/**
  * Classify activity status based on days since last active
  */
 function classifyActivityStatus(daysSinceActive: number): ActivityStatus {
@@ -278,8 +314,8 @@ export function aggregateByTeam(workspaces: WorkspaceMetrics[]): TeamMetrics[] {
     // Total workspace hours (sum of all workspace lifetime hours)
     const totalWorkspaceHours = teamWorkspaces.reduce((sum, w) => sum + w.workspace_hours, 0);
 
-    // Total active hours (sum of actual interaction hours from Insights API)
-    const totalActiveHours = teamWorkspaces.reduce((sum, w) => sum + w.active_hours, 0);
+    // Total active hours (aggregated correctly per-user, capped at their workspace totals)
+    const totalActiveHours = calculateTotalActiveHours(teamWorkspaces);
 
     // Average workspace hours
     const avgWorkspaceHours =
@@ -432,8 +468,8 @@ export function calculateTemplateMetrics(
     // Total workspace hours (sum of all workspace lifetime hours)
     const totalWorkspaceHours = templateWorkspaces.reduce((sum, w) => sum + w.workspace_hours, 0);
 
-    // Total active hours (sum of actual interaction hours from Insights API)
-    const totalActiveHours = templateWorkspaces.reduce((sum, w) => sum + w.active_hours, 0);
+    // Total active hours (aggregated correctly per-user, capped at their workspace totals)
+    const totalActiveHours = calculateTotalActiveHours(templateWorkspaces);
 
     // Average workspace hours
     const avgWorkspaceHours =
