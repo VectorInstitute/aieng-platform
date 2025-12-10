@@ -56,7 +56,7 @@ jobs:
           CODER_SESSION_TOKEN: ${{ secrets.CODER_TOKEN }}
         run: |
           echo "Authenticating with Coder..."
-          echo "$CODER_SESSION_TOKEN" | coder login "$CODER_URL" --token
+          echo "$CODER_SESSION_TOKEN" | coder login "$CODER_URL" --token -
           echo "✓ Authenticated to Coder"
 
       - name: Collect and upload analytics
