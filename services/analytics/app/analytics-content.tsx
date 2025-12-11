@@ -22,7 +22,7 @@ async function handleLogout() {
 }
 
 export default function AnalyticsContent({ user }: AnalyticsContentProps) {
-  const { data, loading, error, refetch } = useAnalyticsData();
+  const { data, loading, error, lastUpdated, refetch } = useAnalyticsData();
 
   if (loading && !data) {
     return <LoadingState />;
@@ -36,7 +36,7 @@ export default function AnalyticsContent({ user }: AnalyticsContentProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <PageHeader user={user} onLogout={handleLogout} />
+      <PageHeader user={user} onLogout={handleLogout} lastUpdated={lastUpdated} />
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 pb-8">
         <div className="mb-8 animate-slide-up">
