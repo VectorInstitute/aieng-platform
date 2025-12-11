@@ -19,6 +19,7 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
   const [data, setData] = useState<AnalyticsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [sortColumn, setSortColumn] = useState<SortColumn>('workspaces_for_template');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
@@ -39,6 +40,8 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
       }
       const json = await response.json();
       setData(json);
+      // Use the timestamp from the snapshot data (when it was collected)
+      setLastUpdated(json.timestamp ? new Date(json.timestamp) : null);
       setError(null);
     } catch (err) {
       console.error('Failed to fetch analytics data:', err);
@@ -188,6 +191,11 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                 <p className="text-slate-700 dark:text-slate-300 text-lg">
                   Team breakdown for this template
                 </p>
+                {lastUpdated && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                    Last updated: {lastUpdated.toLocaleTimeString()}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-4">
                 {user && (

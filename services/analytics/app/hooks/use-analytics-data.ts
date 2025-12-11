@@ -5,6 +5,7 @@ interface UseAnalyticsDataResult {
   data: AnalyticsSnapshot | null;
   loading: boolean;
   error: string | null;
+  lastUpdated: Date | null;
   refetch: () => void;
 }
 
@@ -14,6 +15,7 @@ export function useAnalyticsData(): UseAnalyticsDataResult {
   const [data, setData] = useState<AnalyticsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -23,6 +25,8 @@ export function useAnalyticsData(): UseAnalyticsDataResult {
       }
       const json = await response.json();
       setData(json);
+      // Use the timestamp from the snapshot data (when it was collected)
+      setLastUpdated(json.timestamp ? new Date(json.timestamp) : null);
       setError(null);
     } catch (err) {
       console.error('Failed to fetch analytics data:', err);
@@ -43,6 +47,7 @@ export function useAnalyticsData(): UseAnalyticsDataResult {
     data,
     loading,
     error,
+    lastUpdated,
     refetch: fetchData,
   };
 }
