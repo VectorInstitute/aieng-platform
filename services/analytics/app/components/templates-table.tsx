@@ -52,12 +52,12 @@ export function TemplatesTable({ templates }: TemplatesTableProps) {
                 </Tooltip>
               </th>
               <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                <Tooltip content="Sum of workspace usage hours (time from first connection to last connection) for this template">
+                <Tooltip content="Total accumulated time across all workspace sessions, from startup to shutdown">
                   Total Hours
                 </Tooltip>
               </th>
               <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                <Tooltip content="Sum of actual active interaction hours based on agent activity heartbeats (excludes idle time)" position="right">
+                <Tooltip content="Total accumulated time when workspaces have active app connections (e.g., VS Code connected)" position="right">
                   Active Hours
                 </Tooltip>
               </th>
