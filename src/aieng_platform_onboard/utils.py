@@ -10,7 +10,7 @@ from typing import Any
 import google.auth
 import requests
 from google.auth import jwt as google_jwt
-from google.cloud import firestore
+from google.cloud import firestore  # type: ignore[attr-defined]
 from google.oauth2 import credentials as oauth2_credentials
 from rich.console import Console
 
