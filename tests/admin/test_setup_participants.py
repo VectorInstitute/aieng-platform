@@ -99,6 +99,17 @@ user2,team-b,,,"""
         assert is_valid is True
         assert len(errors) == 0
 
+    def test_validate_csv_data_extra_columns(self) -> None:
+        """Test validation with extra columns (should warn but pass)."""
+        csv_data = """github_handle,team_name,extra_column
+user1,team-a,extra_value"""
+        df = pd.read_csv(StringIO(csv_data))
+
+        is_valid, errors = validate_csv_data(df)
+
+        assert is_valid is True
+        assert len(errors) == 0
+
 
 class TestGroupParticipantsByTeam:
     """Tests for group_participants_by_team function."""
@@ -327,6 +338,31 @@ class TestCreateOrUpdateParticipants:
         assert success_count == 0
         assert failed_count == 1
 
+    def test_create_participants_with_team_check_error(
+        self, mock_firestore_client: Mock
+    ) -> None:
+        """Test handling error when checking if team exists."""
+        teams_data = {
+            "team-a": [
+                {"github_handle": "user1", "email": "user1@example.com"},
+            ],
+        }
+
+        # Mock team ref that raises error on get()
+        mock_team_ref = Mock()
+        mock_team_ref.get.side_effect = Exception("Firestore error")
+
+        mock_collection = Mock()
+        mock_collection.document.return_value = mock_team_ref
+        mock_firestore_client.collection.return_value = mock_collection
+
+        success_count, failed_count = create_or_update_participants(
+            mock_firestore_client, teams_data, dry_run=False
+        )
+
+        assert success_count == 0
+        assert failed_count == 1
+
 
 class TestDisplaySummaryTable:
     """Tests for display_summary_table function."""
@@ -461,4 +497,53 @@ class TestSetupParticipantsFromCSV:
         ):
             exit_code = setup_participants_from_csv(str(csv_file))
 
+            assert exit_code == 1
+
+    def test_setup_participants_csv_read_error(self, tmp_path: Path) -> None:
+        """Test CSV read error."""
+        csv_file = tmp_path / "invalid.csv"
+        csv_file.write_text("invalid,csv,data\nwith,bad,structure\n")
+
+        # Create malformed CSV that pandas can't parse properly
+        with patch(
+            "aieng_platform_onboard.admin.setup_participants.pd.read_csv",
+            side_effect=Exception("CSV parse error"),
+        ):
+            exit_code = setup_participants_from_csv(str(csv_file))
+
+            assert exit_code == 1
+
+    def test_setup_participants_with_failures(
+        self, tmp_path: Path, mock_firestore_client: Mock
+    ) -> None:
+        """Test setup with some failed participants."""
+        csv_file = tmp_path / "participants.csv"
+        csv_file.write_text(
+            "github_handle,team_name,email\nuser1,team-a,user1@example.com"
+        )
+
+        # Mock team existence check - team doesn't exist
+        mock_team_doc = Mock()
+        mock_team_doc.exists = False
+        mock_team_ref = Mock()
+        mock_team_ref.get.return_value = mock_team_doc
+
+        with (
+            patch(
+                "aieng_platform_onboard.admin.setup_participants.get_firestore_client",
+                return_value=mock_firestore_client,
+            ),
+            patch(
+                "aieng_platform_onboard.admin.setup_participants.get_team_by_name",
+                return_value=None,
+            ),
+        ):
+            # Mock collection and document for team existence check
+            mock_collection = Mock()
+            mock_collection.document.return_value = mock_team_ref
+            mock_firestore_client.collection.return_value = mock_collection
+
+            exit_code = setup_participants_from_csv(str(csv_file), dry_run=False)
+
+            # Should fail because team doesn't exist
             assert exit_code == 1
