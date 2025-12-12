@@ -1,6 +1,6 @@
 # CLI Reference
 
-The `aieng-platform-onboard` package provides a command-line tool for bootcamp participant onboarding, authentication, and environment setup.
+The `aieng-platform-onboard` package provides a command-line tool for bootcamp participant onboarding, authentication, environment setup, and admin operations.
 
 ## Installation
 
@@ -13,6 +13,10 @@ pip install aieng-platform-onboard
 ### `onboard`
 
 Main command for onboarding bootcamp participants with team-specific API keys.
+
+### `onboard admin`
+
+Admin commands for managing participants and teams.
 
 #### Usage
 
@@ -39,6 +43,66 @@ View onboarding status for all participants (requires admin credentials):
 ```bash
 onboard --admin-status-report --gcp-project coderd
 ```
+
+## Admin Commands
+
+### `onboard admin setup-participants`
+
+Setup participants and teams from CSV file.
+
+#### Usage
+
+```bash
+onboard admin setup-participants <csv_file> [--dry-run]
+```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `csv_file` | Path to CSV file | Yes |
+
+#### CSV Format
+
+Required columns:
+- `github_handle` - GitHub username
+- `team_name` - Team name
+
+Optional columns:
+- `email` - Email address
+- `first_name` - First name
+- `last_name` - Last name
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `--dry-run` | Validate and preview changes without modifying Firestore |
+
+#### Examples
+
+**Setup participants from CSV:**
+```bash
+onboard admin setup-participants participants.csv
+```
+
+**Dry run (validate only):**
+```bash
+onboard admin setup-participants participants.csv --dry-run
+```
+
+**Sample CSV:**
+```csv
+github_handle,team_name,email,first_name,last_name
+alice,team-alpha,alice@example.com,Alice,Smith
+bob,team-alpha,bob@example.com,Bob,Jones
+charlie,team-beta,charlie@example.com,Charlie,Brown
+```
+
+#### Requirements
+
+- Admin credentials (service account or gcloud auth)
+- Firestore write access
 
 ## Options
 
@@ -133,9 +197,19 @@ onboard \
 ### Admin Status Report
 
 ```bash
-# Requires admin credentials (service account or gcloud auth)
+# Requires admin credentials
 gcloud auth application-default login
 onboard --admin-status-report --gcp-project coderd
+```
+
+### Setup Participants
+
+```bash
+# Setup participants from CSV
+onboard admin setup-participants config/participants.csv
+
+# Validate CSV without making changes
+onboard admin setup-participants config/participants.csv --dry-run
 ```
 
 ## Generated Files
@@ -182,4 +256,11 @@ source .env
   gcloud auth application-default login
   ```
 - Or set `GOOGLE_APPLICATION_CREDENTIALS` to service account key path
-- Verify you have Firestore read access for the project
+- Verify you have Firestore read/write access for the project
+
+### CSV Validation Errors
+
+- Check CSV has required columns: `github_handle`, `team_name`
+- Verify GitHub handles are valid (alphanumeric and hyphens, max 39 chars)
+- Ensure team names are valid (alphanumeric, hyphens, underscores)
+- Check for duplicate GitHub handles

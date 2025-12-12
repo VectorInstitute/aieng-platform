@@ -14,7 +14,7 @@ import firebase_admin
 import jwt
 from firebase_admin import auth, credentials
 from flask import Flask, request
-from google.cloud import firestore
+from google.cloud import firestore  # type: ignore[attr-defined]
 
 
 # Initialize Flask app

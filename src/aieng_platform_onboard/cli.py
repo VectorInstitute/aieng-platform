@@ -467,7 +467,18 @@ def main() -> int:  # noqa: PLR0911
     int
         Exit code (0 for success, 1 for failure).
     """
+    # Check if this is an admin command early, before parsing
+    if len(sys.argv) > 1 and sys.argv[1] == "admin":
+        # Import and delegate to admin CLI
+        from aieng_platform_onboard.admin import admin_main  # noqa: PLC0415
+
+        # Remove "admin" from sys.argv and call admin CLI
+        sys.argv = ["onboard admin"] + sys.argv[2:]
+        return admin_main()
+
+    # Regular onboarding flow
     parser = argparse.ArgumentParser(
+        prog="onboard",
         description="Bootcamp participant onboarding script",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

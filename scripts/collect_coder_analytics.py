@@ -21,7 +21,7 @@ import requests
 
 
 try:
-    from google.cloud import firestore, storage
+    from google.cloud import firestore, storage  # type: ignore[attr-defined]
 except ImportError:
     print("Error: google-cloud-storage or google-cloud-firestore not installed.")
     print("Run: pip install google-cloud-storage google-cloud-firestore")
