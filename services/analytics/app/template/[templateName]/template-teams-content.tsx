@@ -300,7 +300,7 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                       className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                       onClick={() => handleSort('total_workspace_hours')}
                     >
-                      <Tooltip content="Sum of workspace usage hours (time from first connection to last connection) for this team">
+                      <Tooltip content="Total accumulated time across all workspace sessions, from startup to shutdown">
                         <div className="flex items-center justify-end gap-2">
                           Total Hours
                           {getSortIcon('total_workspace_hours')}
@@ -311,7 +311,7 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                       className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                       onClick={() => handleSort('total_active_hours')}
                     >
-                      <Tooltip content="Sum of actual active interaction hours based on agent activity heartbeats (excludes idle time)">
+                      <Tooltip content="Total accumulated time when workspaces have active app connections (e.g., VS Code connected)">
                         <div className="flex items-center justify-end gap-2">
                           Active Hours
                           {getSortIcon('total_active_hours')}
