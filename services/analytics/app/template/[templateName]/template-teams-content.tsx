@@ -6,6 +6,7 @@ import { ArrowLeft, Users, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import type { User } from '@vector-institute/aieng-auth-core';
 import type { AnalyticsSnapshot, TeamMetrics } from '@/lib/types';
 import { Tooltip } from '@/app/components/tooltip';
+import { aggregateByCompany } from '@/lib/company-utils';
 
 type SortColumn = 'team_name' | 'workspaces_for_template' | 'unique_active_users' | 'total_workspace_hours' | 'total_active_hours' | 'active_days';
 type SortDirection = 'asc' | 'desc';
@@ -22,6 +23,7 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [sortColumn, setSortColumn] = useState<SortColumn>('workspaces_for_template');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [viewMode, setViewMode] = useState<'teams' | 'companies'>('teams');
 
   const handleLogout = async () => {
     try {
@@ -73,9 +75,17 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
       .filter(team => team.workspaces_for_template > 0);
   }, [data, template]);
 
+  // Apply company aggregation based on view mode
+  const displayTeams = useMemo(() => {
+    if (viewMode === 'companies') {
+      return aggregateByCompany(templateTeams);
+    }
+    return templateTeams;
+  }, [templateTeams, viewMode]);
+
   // Sort template teams
   const sortedTemplateTeams = useMemo(() => {
-    const sorted = [...templateTeams].sort((a, b) => {
+    const sorted = [...displayTeams].sort((a, b) => {
       let aValue: string | number = a[sortColumn];
       let bValue: string | number = b[sortColumn];
 
@@ -97,7 +107,7 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
     });
 
     return sorted;
-  }, [templateTeams, sortColumn, sortDirection]);
+  }, [displayTeams, sortColumn, sortDirection]);
 
   // Handle column header click
   const handleSort = (column: SortColumn) => {
@@ -252,13 +262,42 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
         <div className="animate-slide-up">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Users className="h-6 w-6 text-vector-magenta" />
-                Teams Using This Template
-              </h2>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                {sortedTemplateTeams.length} teams have created workspaces from this template
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Users className="h-6 w-6 text-vector-magenta" />
+                    Teams Using This Template
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                    {viewMode === 'companies'
+                      ? `${sortedTemplateTeams.length} companies have created workspaces from this template`
+                      : `${sortedTemplateTeams.length} teams have created workspaces from this template`
+                    }
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('teams')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                      viewMode === 'teams'
+                        ? 'bg-white dark:bg-slate-700 text-vector-magenta shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    Individual Teams
+                  </button>
+                  <button
+                    onClick={() => setViewMode('companies')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                      viewMode === 'companies'
+                        ? 'bg-white dark:bg-slate-700 text-vector-magenta shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    By Company
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
