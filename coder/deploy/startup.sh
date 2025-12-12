@@ -52,7 +52,8 @@ Environment=CODER_EXTERNAL_AUTH_0_CLIENT_ID=<GH_APP_CLIENT_ID>\n\
 Environment=CODER_EXTERNAL_AUTH_0_CLIENT_SECRET=<GH_APP_CLIENT_SECRET>\n\
 Environment=CODER_EXTERNAL_AUTH_0_SCOPES=repo,workflow,admin:public_key\n\
 Environment=CODER_LOG_LEVEL=debug\n\
-Environment=CODER_MAX_TOKEN_LIFETIME=8760h" > /etc/systemd/system/coder.service.d/override.conf
+Environment=CODER_MAX_TOKEN_LIFETIME=8760h\n\
+Environment=CODER_SECURE_AUTH_COOKIE=true" > /etc/systemd/system/coder.service.d/override.conf
 
 # Reload systemd to apply the changes
 systemctl daemon-reload
