@@ -506,8 +506,11 @@ export function calculateTemplateMetrics(
 /**
  * Calculate daily user engagement from workspace data
  * Returns array of daily unique users and active workspaces for the last 60 days
+ *
+ * A user is considered "engaged" if they initiate a connection to their workspace via apps, web terminal, or SSH.
+ * This function processes all builds for each workspace and extracts all agent connection timestamps.
  */
-export function calculateDailyEngagement(workspaces: WorkspaceMetrics[]): DailyEngagement[] {
+export function calculateDailyEngagement(workspaces: CoderWorkspace[]): DailyEngagement[] {
   const now = new Date();
   const daysToShow = 60;
 
@@ -524,22 +527,65 @@ export function calculateDailyEngagement(workspaces: WorkspaceMetrics[]): DailyE
     workspaceActivityMap.set(dateStr, new Set());
   }
 
-  // Process each workspace
+  // Process each workspace and all its builds
   workspaces.forEach((workspace) => {
-    const createdDate = new Date(workspace.created_at).toISOString().split('T')[0];
-    const lastActiveDate = workspace.last_active ? new Date(workspace.last_active).toISOString().split('T')[0] : createdDate;
+    const workspaceId = workspace.id;
+    const ownerHandle = workspace.owner_name.toLowerCase();
+    const allBuilds = workspace.all_builds || [];
 
-    // Add user to created date
-    if (engagementMap.has(createdDate)) {
-      engagementMap.get(createdDate)!.add(workspace.owner_github_handle);
-      workspaceActivityMap.get(createdDate)!.add(workspace.workspace_id);
-    }
+    // Track dates when this workspace had connections
+    const workspaceConnectionDates = new Set<string>();
 
-    // Add user to last active date
-    if (lastActiveDate !== createdDate && engagementMap.has(lastActiveDate)) {
-      engagementMap.get(lastActiveDate)!.add(workspace.owner_github_handle);
-      workspaceActivityMap.get(lastActiveDate)!.add(workspace.workspace_id);
-    }
+    // Process all builds to find all connection dates
+    allBuilds.forEach((build) => {
+      try {
+        // Count workspace start actions as engagement (user initiating connection)
+        if (build.transition === 'start' && build.created_at) {
+          const dateStr = build.created_at.split('T')[0];
+          if (engagementMap.has(dateStr)) {
+            engagementMap.get(dateStr)!.add(ownerHandle);
+            workspaceConnectionDates.add(dateStr);
+          }
+        }
+
+        const resources = build.resources || [];
+
+        for (const resource of resources) {
+          const agents = resource.agents || [];
+
+          for (const agent of agents) {
+            // Extract all connection timestamps from this agent
+            const firstConnected = agent.first_connected_at;
+            const lastConnected = agent.last_connected_at;
+
+            // Add engagement for first connection date
+            if (firstConnected) {
+              const dateStr = firstConnected.split('T')[0];
+              if (engagementMap.has(dateStr)) {
+                engagementMap.get(dateStr)!.add(ownerHandle);
+                workspaceConnectionDates.add(dateStr);
+              }
+            }
+
+            // Add engagement for last connection date (if different from first)
+            if (lastConnected && lastConnected !== firstConnected) {
+              const dateStr = lastConnected.split('T')[0];
+              if (engagementMap.has(dateStr)) {
+                engagementMap.get(dateStr)!.add(ownerHandle);
+                workspaceConnectionDates.add(dateStr);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.warn(`Error processing build for workspace ${workspaceId}:`, error);
+      }
+    });
+
+    // Add workspace to active workspaces for all dates it had connections
+    workspaceConnectionDates.forEach((dateStr) => {
+      workspaceActivityMap.get(dateStr)?.add(workspaceId);
+    });
   });
 
   // Convert to array and sort by date
