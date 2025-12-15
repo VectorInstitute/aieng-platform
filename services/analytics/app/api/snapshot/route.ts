@@ -41,7 +41,7 @@ export async function GET() {
     const teamMetrics = aggregateByTeam(workspaceMetrics);
     const platformMetrics = calculatePlatformMetrics(workspaceMetrics);
     const templateMetrics = calculateTemplateMetrics(workspaceMetrics, snapshot.templates);
-    const dailyEngagement = calculateDailyEngagement(workspaceMetrics);
+    const dailyEngagement = calculateDailyEngagement(snapshot.workspaces);
 
     console.log(`Calculated metrics for ${teamMetrics.length} teams and ${dailyEngagement.length} days of engagement`);
 
