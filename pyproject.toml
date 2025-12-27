@@ -19,6 +19,7 @@ dependencies = [
     "rich>=13.0.0",
     "pandas>=2.3.3",
     "urllib3>=2.6.0",  # Pinning version to address vulnerabilities GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
+    "filelock>=3.20.1",
 ]
 
 [project.scripts]
