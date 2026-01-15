@@ -1,6 +1,6 @@
 # CLI Reference
 
-The `aieng-platform-onboard` package provides a command-line tool for bootcamp participant onboarding, authentication, environment setup, and admin operations.
+The `aieng-platform-onboard` package provides command-line tools for bootcamp participant onboarding, authentication, and administration.
 
 ## Installation
 
@@ -8,52 +8,115 @@ The `aieng-platform-onboard` package provides a command-line tool for bootcamp p
 pip install aieng-platform-onboard
 ```
 
-## Commands
+## Overview
 
-### `onboard`
+The CLI provides two main commands:
+
+- **`onboard`** - Participant onboarding with team-specific API keys
+- **`onboard admin`** - Admin commands for managing participants and teams
+
+---
+
+## Participant Onboarding
 
 Main command for onboarding bootcamp participants with team-specific API keys.
 
-### `onboard admin`
-
-Admin commands for managing participants and teams.
-
-#### Usage
+### Usage
 
 ```bash
 onboard [OPTIONS]
 ```
 
-#### Participant Onboarding
+### Options
 
-Standard onboarding flow for bootcamp participants:
+#### Required
 
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--bootcamp-name` | Name of the bootcamp | `--bootcamp-name fall-2025` |
+| `--test-script` | Path to integration test script | `--test-script tests/integration/test_api_keys.py` |
+
+#### Optional
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--gcp-project` | GCP project ID | `coderd` |
+| `--output-dir` | Directory for .env file | `.` (current directory) |
+| `--firebase-api-key` | Firebase Web API key for token exchange | (from `FIREBASE_WEB_API_KEY` env var) |
+| `--skip-test` | Skip integration tests | `False` |
+| `--force` | Force re-onboarding even if already onboarded | `False` |
+| `--admin-status-report` | Display onboarding status for all participants (admin only) | `False` |
+| `--version` | Show version number and exit | - |
+
+### Onboarding Process
+
+The participant onboarding flow consists of 9 steps:
+
+1. **Identify Participant** - Detects GitHub username from environment
+2. **Fetch Authentication Token** - Retrieves fresh token from service
+3. **Connect to Firestore** - Initializes secure Firestore connection
+4. **Fetch Your Profile** - Reads participant data and team assignment
+5. **Fetch Team API Keys** - Retrieves team-specific API keys
+6. **Fetch Global Configuration** - Fetches shared configuration keys
+7. **Create Environment File** - Generates .env file with all keys
+8. **Run Integration Test** - Validates API keys (optional)
+9. **Mark as Onboarded** - Updates participant status in Firestore
+
+### Examples
+
+**Basic Onboarding:**
+```bash
+export GITHUB_USER=myusername
+onboard \
+  --bootcamp-name fall-2025 \
+  --test-script tests/integration/test_api_keys.py
+```
+
+**Skip Integration Tests:**
 ```bash
 onboard \
   --bootcamp-name fall-2025 \
-  --gcp-project coderd \
   --test-script tests/integration/test_api_keys.py \
-  --output-dir .
+  --skip-test
 ```
 
-#### Admin Status Report
-
-View onboarding status for all participants (requires admin credentials):
-
+**Force Re-onboarding:**
 ```bash
+onboard \
+  --bootcamp-name fall-2025 \
+  --test-script tests/integration/test_api_keys.py \
+  --force
+```
+
+**Custom Output Directory:**
+```bash
+onboard \
+  --bootcamp-name fall-2025 \
+  --test-script tests/integration/test_api_keys.py \
+  --output-dir ~/my-bootcamp
+```
+
+**Admin Status Report:**
+```bash
+# Requires admin credentials
+gcloud auth application-default login
 onboard --admin-status-report --gcp-project coderd
 ```
 
+---
+
 ## Admin Commands
+
+Admin commands for managing bootcamp participants and teams in Firestore.
 
 ### `onboard admin setup-participants`
 
-Setup participants and teams from CSV file.
+Setup participants and teams from a CSV file. This command creates both team documents and participant documents in Firestore.
 
 #### Usage
 
 ```bash
-onboard admin setup-participants <csv_file> [--dry-run]
+onboard admin setup-participants <csv_file> [OPTIONS]
 ```
 
 #### Arguments
@@ -73,6 +136,14 @@ Optional columns:
 - `first_name` - First name
 - `last_name` - Last name
 
+**Sample CSV:**
+```csv
+github_handle,team_name,email,first_name,last_name
+alice,team-alpha,alice@example.com,Alice,Smith
+bob,team-alpha,bob@example.com,Bob,Jones
+charlie,team-beta,charlie@example.com,Charlie,Brown
+```
+
 #### Options
 
 | Option | Description |
@@ -83,20 +154,12 @@ Optional columns:
 
 **Setup participants from CSV:**
 ```bash
-onboard admin setup-participants participants.csv
+onboard admin setup-participants config/participants.csv
 ```
 
 **Dry run (validate only):**
 ```bash
-onboard admin setup-participants participants.csv --dry-run
-```
-
-**Sample CSV:**
-```csv
-github_handle,team_name,email,first_name,last_name
-alice,team-alpha,alice@example.com,Alice,Smith
-bob,team-alpha,bob@example.com,Bob,Jones
-charlie,team-beta,charlie@example.com,Charlie,Brown
+onboard admin setup-participants config/participants.csv --dry-run
 ```
 
 #### Requirements
@@ -104,50 +167,76 @@ charlie,team-beta,charlie@example.com,Charlie,Brown
 - Admin credentials (service account or gcloud auth)
 - Firestore write access
 
-## Options
+---
 
-### Required (for participant onboarding)
+### `onboard admin delete-participants`
 
-| Option | Description | Example |
-|--------|-------------|---------|
-| `--bootcamp-name` | Name of the bootcamp | `--bootcamp-name fall-2025` |
-| `--test-script` | Path to integration test script | `--test-script tests/integration/test_api_keys.py` |
+Delete participants from Firestore database. Can optionally remove empty teams after participant deletion.
 
-### Optional
+#### Usage
+
+```bash
+onboard admin delete-participants <csv_file> [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `csv_file` | Path to CSV file with participants to delete | Yes |
+
+#### CSV Format
+
+Required columns:
+- `github_handle` - GitHub username of participant to delete
+
+**Sample CSV:**
+```csv
+github_handle
+alice
+bob
+```
+
+#### Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--gcp-project` | GCP project ID | `coderd` |
-| `--output-dir` | Directory for .env file | `.` (current directory) |
-| `--firebase-api-key` | Firebase Web API key for token exchange | (from `FIREBASE_WEB_API_KEY` env var) |
-| `--skip-test` | Skip integration tests | `False` |
-| `--force` | Force re-onboarding even if already onboarded | `False` |
-| `--admin-status-report` | Display onboarding status for all participants (admin only) | `False` |
-| `--version` | Show version number and exit | - |
+| `--dry-run` | Validate and preview changes without modifying Firestore | `False` |
+| `--keep-empty-teams` | Keep teams even if they become empty after removing participants | `False` |
 
-## Onboarding Process
+#### Examples
 
-The participant onboarding flow consists of 9 steps:
+**Delete participants from CSV:**
+```bash
+onboard admin delete-participants config/to_remove.csv
+```
 
-1. **Identify Participant** - Detects GitHub username from environment
-2. **Fetch Authentication Token** - Retrieves fresh token from service
-3. **Connect to Firestore** - Initializes secure Firestore connection
-4. **Fetch Your Profile** - Reads participant data and team assignment
-5. **Fetch Team API Keys** - Retrieves team-specific API keys
-6. **Fetch Global Configuration** - Fetches shared configuration keys
-7. **Create Environment File** - Generates .env file with all keys
-8. **Run Integration Test** - Validates API keys (optional)
-9. **Mark as Onboarded** - Updates participant status in Firestore
+**Dry run (preview only):**
+```bash
+onboard admin delete-participants config/to_remove.csv --dry-run
+```
+
+**Delete participants but keep empty teams:**
+```bash
+onboard admin delete-participants config/to_remove.csv --keep-empty-teams
+```
+
+#### Requirements
+
+- Admin credentials (service account or gcloud auth)
+- Firestore write access
+
+---
 
 ## Environment Variables
 
-The following environment variables are used:
-
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `GITHUB_USER` | GitHub username for authentication | Yes |
-| `FIREBASE_WEB_API_KEY` | Firebase Web API key (can be passed via `--firebase-api-key`) | Yes |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Path to GCP service account key (admin only) | For `--admin-status-report` |
+| `GITHUB_USER` | GitHub username for authentication | Yes (for participant onboarding) |
+| `FIREBASE_WEB_API_KEY` | Firebase Web API key (can be passed via `--firebase-api-key`) | Yes (for participant onboarding) |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path to GCP service account key | Yes (for admin commands) |
+
+---
 
 ## Exit Codes
 
@@ -156,61 +245,7 @@ The following environment variables are used:
 | `0` | Success |
 | `1` | Failure (authentication, connection, or configuration error) |
 
-## Examples
-
-### Basic Onboarding
-
-```bash
-export GITHUB_USER=myusername
-onboard \
-  --bootcamp-name fall-2025 \
-  --test-script tests/integration/test_api_keys.py
-```
-
-### Skip Integration Tests
-
-```bash
-onboard \
-  --bootcamp-name fall-2025 \
-  --test-script tests/integration/test_api_keys.py \
-  --skip-test
-```
-
-### Force Re-onboarding
-
-```bash
-onboard \
-  --bootcamp-name fall-2025 \
-  --test-script tests/integration/test_api_keys.py \
-  --force
-```
-
-### Custom Output Directory
-
-```bash
-onboard \
-  --bootcamp-name fall-2025 \
-  --test-script tests/integration/test_api_keys.py \
-  --output-dir ~/my-bootcamp
-```
-
-### Admin Status Report
-
-```bash
-# Requires admin credentials
-gcloud auth application-default login
-onboard --admin-status-report --gcp-project coderd
-```
-
-### Setup Participants
-
-```bash
-# Setup participants from CSV
-onboard admin setup-participants config/participants.csv
-
-# Validate CSV without making changes
-onboard admin setup-participants config/participants.csv --dry-run
-```
+---
 
 ## Generated Files
 
@@ -228,6 +263,8 @@ The onboarding process creates a `.env` file containing:
 ```bash
 source .env
 ```
+
+---
 
 ## Troubleshooting
 
@@ -260,7 +297,8 @@ source .env
 
 ### CSV Validation Errors
 
-- Check CSV has required columns: `github_handle`, `team_name`
+- Check CSV has required columns: `github_handle`, `team_name` (for setup-participants)
+- Check CSV has required column: `github_handle` (for delete-participants)
 - Verify GitHub handles are valid (alphanumeric and hyphens, max 39 chars)
 - Ensure team names are valid (alphanumeric, hyphens, underscores)
-- Check for duplicate GitHub handles
+- Check for duplicate GitHub handles in CSV
