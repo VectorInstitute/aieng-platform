@@ -18,8 +18,10 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "rich>=13.0.0",
     "pandas>=2.3.3",
-    "urllib3>=2.6.0",  # Pinning version to address vulnerabilities GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
-    "filelock>=3.20.1",
+    "urllib3==2.6.3", # Pinning version to address vulnerabilities GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
+    "filelock==3.20.3",
+    "authlib==1.6.6",
+    "virtualenv==20.36.1",
 ]
 
 [project.scripts]
