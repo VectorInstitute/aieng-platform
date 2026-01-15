@@ -238,11 +238,26 @@ def get_historical_participant_data(bucket_name: str) -> dict[str, dict[str, Any
     try:
         storage_client = storage.Client()
         bucket = storage_client.bucket(bucket_name)
-        latest_blob = bucket.blob("latest.json")
 
-        if not latest_blob.exists():
-            print("  No previous snapshot found")
+        # List all snapshots and get the most recent one
+        # This ensures we always build on the previous collection's data
+        blobs = list(bucket.list_blobs(prefix="snapshots/"))
+
+        if not blobs:
+            print("  No previous snapshots found")
             return {}
+
+        # Sort by name (which includes timestamp) to get most recent
+        snapshot_blobs = [b for b in blobs if b.name.endswith(".json")]
+        if not snapshot_blobs:
+            print("  No snapshot JSON files found")
+            return {}
+
+        # Get the most recent snapshot (last in sorted order)
+        snapshot_blobs.sort(key=lambda b: b.name)
+        latest_blob = snapshot_blobs[-1]
+
+        print(f"  Using previous snapshot: {latest_blob.name}")
 
         content = latest_blob.download_as_text()
         snapshot = json.loads(content)
@@ -366,9 +381,10 @@ def fetch_workspaces(
     workspaces = run_command(["coder", "list", "-a", "-o", "json"])
 
     # Teams to exclude from analytics
-    # NOTE: "Unassigned" is used as a fallback for participants not in Firestore
-    # and should NOT be excluded - we want to see their workspace activity.
-    excluded_teams = ["facilitators"]
+    # Historical team data is preserved from previous snapshots
+    # "Unassigned" only appears for new users not in any historical snapshot
+    # or Firestore
+    excluded_teams = ["facilitators", "Unassigned"]
 
     original_count = len(workspaces)
 
