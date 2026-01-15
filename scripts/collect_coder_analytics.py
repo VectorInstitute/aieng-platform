@@ -216,8 +216,13 @@ def fetch_user_activity_insights(
         return {}
 
 
-def get_participant_mappings() -> dict[str, dict[str, Any]]:
-    """Get participant data from Firestore including team and name info.
+def get_historical_participant_data(bucket_name: str) -> dict[str, dict[str, Any]]:
+    """Get historical participant data from the previous snapshot.
+
+    Parameters
+    ----------
+    bucket_name : str
+        Name of the GCS bucket containing snapshots
 
     Returns
     -------
@@ -228,7 +233,55 @@ def get_participant_mappings() -> dict[str, dict[str, Any]]:
             'last_name': str | None
         }
     """
-    print("Fetching participant data from Firestore...")
+    print("Fetching historical participant data from previous snapshot...")
+
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+        latest_blob = bucket.blob("latest.json")
+
+        if not latest_blob.exists():
+            print("  No previous snapshot found")
+            return {}
+
+        content = latest_blob.download_as_text()
+        snapshot = json.loads(content)
+
+        historical_data = {}
+        for workspace in snapshot.get("workspaces", []):
+            owner_name = workspace.get("owner_name", "").lower()
+            team_name = workspace.get("team_name")
+            first_name = workspace.get("owner_first_name")
+            last_name = workspace.get("owner_last_name")
+
+            # Only store if we have actual data (not null/None)
+            if team_name:
+                historical_data[owner_name] = {
+                    "team_name": team_name,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                }
+
+        print(f"✓ Loaded historical data for {len(historical_data)} participants")
+        return historical_data
+    except Exception as e:
+        print(f"  Warning: Could not load historical data: {e}")
+        return {}
+
+
+def get_participant_mappings() -> dict[str, dict[str, Any]]:
+    """Get current participant data from Firestore.
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Mapping of github_handle (lowercase) -> {
+            'team_name': str,
+            'first_name': str | None,
+            'last_name': str | None
+        }
+    """
+    print("Fetching current participant data from Firestore...")
 
     project_id = "coderd"
     database_id = "onboarding"
@@ -248,8 +301,46 @@ def get_participant_mappings() -> dict[str, dict[str, Any]]:
                 "last_name": data.get("last_name"),
             }
 
-    print(f"✓ Loaded {len(mappings)} participant mappings")
+    print(f"✓ Loaded {len(mappings)} current participant mappings")
     return mappings
+
+
+def merge_participant_data(
+    historical_data: dict[str, dict[str, Any]], current_data: dict[str, dict[str, Any]]
+) -> dict[str, dict[str, Any]]:
+    """Merge historical and current participant data, preserving history.
+
+    Historical data takes precedence to preserve team assignments even after
+    participants are removed from Firestore.
+
+    Parameters
+    ----------
+    historical_data : dict[str, dict[str, Any]]
+        Historical participant data from previous snapshot
+    current_data : dict[str, dict[str, Any]]
+        Current participant data from Firestore
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Merged participant data with historical preservation
+    """
+    print("Merging historical and current participant data...")
+
+    # Start with historical data (preserves deleted participants)
+    merged = historical_data.copy()
+
+    # Update with current data (adds new participants, updates existing)
+    for handle, data in current_data.items():
+        merged[handle] = data
+
+    print(f"✓ Merged data: {len(merged)} total participants")
+    print(
+        f"  - Historical only (deleted): {len(set(historical_data.keys()) - set(current_data.keys()))}"
+    )
+    print(f"  - Current (active): {len(current_data)}")
+
+    return merged
 
 
 def fetch_workspaces(
@@ -275,7 +366,9 @@ def fetch_workspaces(
     workspaces = run_command(["coder", "list", "-a", "-o", "json"])
 
     # Teams to exclude from analytics
-    excluded_teams = ["facilitators", "Unassigned"]
+    # NOTE: "Unassigned" is used as a fallback for participants not in Firestore
+    # and should NOT be excluded - we want to see their workspace activity.
+    excluded_teams = ["facilitators"]
 
     original_count = len(workspaces)
 
@@ -469,8 +562,11 @@ def main() -> None:
     api_url, session_token = get_coder_api_config()
     print(f"✓ Using Coder API: {api_url}")
 
-    # Fetch participant mappings first
-    participant_mappings = get_participant_mappings()
+    # Fetch participant data from multiple sources and merge
+    # Historical data preserves team assignments for deleted participants
+    historical_data = get_historical_participant_data(bucket_name)
+    current_data = get_participant_mappings()
+    participant_mappings = merge_participant_data(historical_data, current_data)
 
     # Fetch data (with filtering and build enrichment)
     workspaces = fetch_workspaces(participant_mappings, api_url, session_token)
