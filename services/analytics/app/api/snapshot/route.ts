@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getLatestSnapshot } from '@/lib/gcs';
-import { getTeamMappings } from '@/lib/firestore';
 import {
   enrichWorkspaceData,
   aggregateByTeam,
@@ -24,17 +23,13 @@ export async function GET() {
   try {
     console.log('Fetching latest Coder analytics snapshot...');
 
-    // Fetch data in parallel
-    const [snapshot, teamMappings] = await Promise.all([
-      getLatestSnapshot(),
-      getTeamMappings(),
-    ]);
+    // Fetch snapshot (team data is pre-enriched at collection time)
+    const snapshot = await getLatestSnapshot();
 
     console.log(`Snapshot contains ${snapshot.workspaces.length} workspaces and ${snapshot.templates.length} templates`);
-    console.log(`Loaded ${teamMappings.size} team mappings`);
 
-    // Enrich workspace data with team information
-    const workspaceMetrics = enrichWorkspaceData(snapshot.workspaces, teamMappings);
+    // Enrich workspace data with calculated metrics (team data already in snapshot)
+    const workspaceMetrics = enrichWorkspaceData(snapshot.workspaces);
     console.log(`Enriched ${workspaceMetrics.length} workspace metrics`);
 
     // Calculate aggregated metrics

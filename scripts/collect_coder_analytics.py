@@ -14,7 +14,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import requests
@@ -216,15 +216,19 @@ def fetch_user_activity_insights(
         return {}
 
 
-def get_team_mappings() -> dict[str, str]:
-    """Get team mappings from Firestore.
+def get_participant_mappings() -> dict[str, dict[str, Any]]:
+    """Get participant data from Firestore including team and name info.
 
     Returns
     -------
-    dict[str, str]
-        Mapping of github_handle (lowercase) -> team_name
+    dict[str, dict[str, Any]]
+        Mapping of github_handle (lowercase) -> {
+            'team_name': str,
+            'first_name': str | None,
+            'last_name': str | None
+        }
     """
-    print("Fetching team mappings from Firestore...")
+    print("Fetching participant data from Firestore...")
 
     project_id = "coderd"
     database_id = "onboarding"
@@ -238,22 +242,25 @@ def get_team_mappings() -> dict[str, str]:
         data = doc.to_dict()
         if data:
             github_handle = doc.id.lower()
-            team_name = data.get("team_name", "Unassigned")
-            mappings[github_handle] = team_name
+            mappings[github_handle] = {
+                "team_name": data.get("team_name", "Unassigned"),
+                "first_name": data.get("first_name"),
+                "last_name": data.get("last_name"),
+            }
 
-    print(f"✓ Loaded {len(mappings)} participant team mappings")
+    print(f"✓ Loaded {len(mappings)} participant mappings")
     return mappings
 
 
 def fetch_workspaces(
-    team_mappings: dict[str, str], api_url: str, session_token: str
+    participant_mappings: dict[str, dict[str, Any]], api_url: str, session_token: str
 ) -> list[dict[str, Any]]:
     """Fetch workspaces using Coder CLI and enrich with build data.
 
     Parameters
     ----------
-    team_mappings : dict[str, str]
-        Mapping of github_handle -> team_name
+    participant_mappings : dict[str, dict[str, Any]]
+        Mapping of github_handle -> participant data (team_name, first_name, last_name)
     api_url : str
         Coder API base URL
     session_token : str
@@ -262,7 +269,7 @@ def fetch_workspaces(
     Returns
     -------
     list[dict[str, Any]]
-        List of workspace objects with builds, usage hours, and active hours
+        List of workspace objects with builds, usage hours, active hours, and team data
     """
     print("Fetching workspaces from Coder...")
     workspaces = run_command(["coder", "list", "-a", "-o", "json"])
@@ -276,7 +283,8 @@ def fetch_workspaces(
     filtered_workspaces = []
     for ws in workspaces:
         owner_name = ws.get("owner_name", "").lower()
-        team_name = team_mappings.get(owner_name, "Unassigned")
+        participant_data = participant_mappings.get(owner_name, {})
+        team_name = participant_data.get("team_name", "Unassigned")
 
         if team_name not in excluded_teams:
             filtered_workspaces.append(ws)
@@ -299,14 +307,14 @@ def fetch_workspaces(
             for ws in filtered_workspaces
             if ws.get("created_at")
         ),
-        default=datetime.now(UTC),
+        default=datetime.now(timezone.utc),
     )
     # Normalize to midnight (00:00:00) as required by the API
     start_time = earliest_created.replace(
         hour=0, minute=0, second=0, microsecond=0
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
     # Normalize end time to the start of the current hour (required by API)
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
     end_time = now.replace(minute=0, second=0, microsecond=0).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
     )
@@ -336,6 +344,13 @@ def fetch_workspaces(
         # handles this correctly by counting each user once.
         owner_name = workspace.get("owner_name", "").lower()
         workspace["active_hours"] = activity_map.get(owner_name, 0.0)
+
+        # Enrich with participant data (team and name)
+        # This ensures all data needed for dashboard is in the snapshot
+        participant_data = participant_mappings.get(owner_name, {})
+        workspace["team_name"] = participant_data.get("team_name", "Unassigned")
+        workspace["owner_first_name"] = participant_data.get("first_name")
+        workspace["owner_last_name"] = participant_data.get("last_name")
 
         # Progress indicator
         if i % 10 == 0:
@@ -371,7 +386,7 @@ def create_snapshot(
     workspaces: list[dict[str, Any]], templates: list[dict[str, Any]]
 ) -> dict[str, Any]:
     """Create a snapshot object with timestamp."""
-    timestamp = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     snapshot = {
         "timestamp": timestamp,
@@ -454,11 +469,11 @@ def main() -> None:
     api_url, session_token = get_coder_api_config()
     print(f"✓ Using Coder API: {api_url}")
 
-    # Fetch team mappings first
-    team_mappings = get_team_mappings()
+    # Fetch participant mappings first
+    participant_mappings = get_participant_mappings()
 
     # Fetch data (with filtering and build enrichment)
-    workspaces = fetch_workspaces(team_mappings, api_url, session_token)
+    workspaces = fetch_workspaces(participant_mappings, api_url, session_token)
     templates = fetch_templates()
 
     # Create snapshot

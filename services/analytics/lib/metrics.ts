@@ -5,7 +5,6 @@ import type {
   TeamMetrics,
   PlatformMetrics,
   TemplateMetrics,
-  ParticipantData,
   ActivityStatus,
   WorkspaceStatus,
   HealthStatus,
@@ -240,28 +239,30 @@ export function getHealthStatus(workspace: CoderWorkspace): HealthStatus {
 // ===== Main Enrichment Functions =====
 
 /**
- * Enrich workspace data with team information and calculated metrics
+ * Enrich workspace data with calculated metrics
+ * Team information is now pre-enriched in the snapshot at collection time
  */
 export function enrichWorkspaceData(
-  workspaces: CoderWorkspace[],
-  teamMappings: Map<string, ParticipantData>
+  workspaces: CoderWorkspace[]
 ): WorkspaceMetrics[] {
   const now = new Date();
 
   return workspaces.map((workspace) => {
-    const ownerHandle = workspace.owner_name.toLowerCase();
-    const participant = teamMappings.get(ownerHandle);
-
     const lastActive = getLastActiveTimestamp(workspace);
     const daysSinceActive = daysBetween(new Date(lastActive), now);
     const daysSinceCreated = daysBetween(new Date(workspace.created_at), now);
     const workspaceHours = getWorkspaceUsageHours(workspace);
     const activeHours = getWorkspaceActiveHours(workspace);
 
-    // Determine full name
+    // Use pre-enriched data from snapshot
+    const teamName = workspace.team_name || 'Unassigned';
+    const firstName = workspace.owner_first_name;
+    const lastName = workspace.owner_last_name;
+
+    // Build owner name
     let ownerName = workspace.owner_name;
-    if (participant?.first_name && participant?.last_name) {
-      ownerName = `${participant.first_name} ${participant.last_name}`;
+    if (firstName && lastName) {
+      ownerName = `${firstName} ${lastName}`;
     }
 
     return {
@@ -269,7 +270,7 @@ export function enrichWorkspaceData(
       workspace_name: workspace.name || `${workspace.owner_name}/workspace`,
       owner_github_handle: workspace.owner_name,
       owner_name: ownerName,
-      team_name: participant?.team_name || 'Unassigned',
+      team_name: teamName,
       template_id: workspace.template_id,
       template_name: workspace.template_name,
       template_display_name: workspace.template_display_name,
