@@ -335,9 +335,9 @@ def delete_participants_from_csv(
         console.print(f"[red]✗[/red] CSV file not found: {csv_file}")
         exit_code = 1
     # Read CSV file
-    elif not (df := _read_csv_file(csv_file)) or not (
+    elif (df := _read_csv_file(csv_file)) is None or (
         github_handles := _validate_and_normalize_csv(df)
-    ):
+    ) is None:
         exit_code = 1
     # Confirm deletion or skip if dry-run
     elif not dry_run and not _confirm_deletion(github_handles, delete_empty_teams):
