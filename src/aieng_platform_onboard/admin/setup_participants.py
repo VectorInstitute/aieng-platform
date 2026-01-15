@@ -262,7 +262,7 @@ def create_or_update_participants(  # noqa: PLR0912, PLR0915
                 console.print(
                     f"  [red]✗ Team '{team_name}' not found in Firestore[/red]\n"
                     f"    [yellow]Skipping {len(participants)} participant(s) for this team[/yellow]\n"
-                    f"    [dim]Run setup_teams.py first to create teams[/dim]"
+                    f"    [dim]Team creation may have failed - check errors above[/dim]"
                 )
                 failed_count += len(participants)
                 progress.update(task, advance=len(participants))
@@ -466,7 +466,7 @@ def setup_participants_from_csv(csv_file: str, dry_run: bool = False) -> int:
                 f"Teams created/updated: {len(team_ids)}\n"
                 f"Participants successful: {success_count}\n"
                 f"Participants failed: {failed_count}\n\n"
-                "[dim]Check errors above and ensure teams exist (run setup_teams.py first)[/dim]",
+                "[dim]Review errors above for details on failed operations[/dim]",
                 border_style="yellow",
                 title="⚠ Partial Success",
             )
