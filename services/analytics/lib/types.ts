@@ -7,6 +7,12 @@ export interface CoderWorkspace {
   owner_id: string;
   owner_name: string;  // This is the GitHub username!
   owner_avatar_url?: string;
+
+  // Pre-enriched participant data from snapshot (added at collection time)
+  team_name: string;  // Team assignment at snapshot time
+  owner_first_name?: string;  // First name at snapshot time
+  owner_last_name?: string;  // Last name at snapshot time
+
   organization_id: string;
   organization_name: string;
   template_id: string;

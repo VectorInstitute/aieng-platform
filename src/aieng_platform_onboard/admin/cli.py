@@ -3,6 +3,9 @@
 import argparse
 import sys
 
+from aieng_platform_onboard.admin.delete_participants import (
+    delete_participants_from_csv,
+)
 from aieng_platform_onboard.admin.setup_participants import (
     setup_participants_from_csv,
 )
@@ -46,11 +49,39 @@ def main() -> int:
         help="Validate and show what would be done without making changes",
     )
 
+    # delete-participants subcommand
+    delete_participants_parser = subparsers.add_parser(
+        "delete-participants",
+        help="Delete participants from Firestore database",
+        description="Remove participants and optionally empty teams from Firestore",
+    )
+    delete_participants_parser.add_argument(
+        "csv_file",
+        type=str,
+        help="Path to CSV file with column: github_handle",
+    )
+    delete_participants_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and show what would be done without making changes",
+    )
+    delete_participants_parser.add_argument(
+        "--keep-empty-teams",
+        action="store_true",
+        help="Keep teams even if they become empty after removing participants",
+    )
+
     args = parser.parse_args()
 
     # Route to appropriate command handler
     if args.command == "setup-participants":
         return setup_participants_from_csv(args.csv_file, dry_run=args.dry_run)
+    if args.command == "delete-participants":
+        return delete_participants_from_csv(
+            args.csv_file,
+            delete_empty_teams=not args.keep_empty_teams,
+            dry_run=args.dry_run,
+        )
 
     # Should never reach here due to required=True
     parser.print_help()
