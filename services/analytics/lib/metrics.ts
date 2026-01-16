@@ -295,7 +295,7 @@ export function enrichWorkspaceData(
  */
 export function aggregateByTeam(
   workspaces: WorkspaceMetrics[],
-  accumulatedUsage?: Record<string, { owner_name: string; template_name: string; team_name: string; total_active_hours: number }>
+  accumulatedUsage?: Record<string, { owner_name: string; template_name: string; team_name: string; total_active_hours: number; workspace_ids?: string[] }>
 ): TeamMetrics[] {
   const teams = new Map<string, WorkspaceMetrics[]>();
 
@@ -478,7 +478,7 @@ export function calculatePlatformMetrics(workspaces: WorkspaceMetrics[]): Platfo
 export function calculateTemplateMetrics(
   workspaces: WorkspaceMetrics[],
   templates: CoderTemplate[],
-  accumulatedUsage?: Record<string, { owner_name: string; template_name: string; team_name: string; total_active_hours: number }>
+  accumulatedUsage?: Record<string, { owner_name: string; template_name: string; team_name: string; total_active_hours: number; workspace_ids?: string[] }>
 ): TemplateMetrics[] {
   // Group workspaces by template
   const templateMap = new Map<string, WorkspaceMetrics[]>();
