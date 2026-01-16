@@ -18,13 +18,20 @@ from datetime import datetime, timezone
 from typing import Any
 
 import requests
+from rich.console import Console
+
+
+# Global console instance for rich output
+console = Console()
 
 
 try:
     from google.cloud import firestore, storage  # type: ignore[attr-defined]
 except ImportError:
-    print("Error: google-cloud-storage or google-cloud-firestore not installed.")
-    print("Run: pip install google-cloud-storage google-cloud-firestore")
+    console.print(
+        "[red]Error: google-cloud-storage or google-cloud-firestore not installed.[/red]"
+    )
+    console.print("Run: pip install google-cloud-storage google-cloud-firestore")
     sys.exit(1)
 
 
@@ -39,11 +46,13 @@ def run_command(cmd: list[str]) -> Any:
         )
         return json.loads(result.stdout)
     except subprocess.CalledProcessError as e:
-        print(f"Error running command {' '.join(cmd)}: {e}")
-        print(f"stderr: {e.stderr}")
+        console.print(f"[red]✗ Error running command {' '.join(cmd)}:[/red] {e}")
+        console.print(f"[red]stderr:[/red] {e.stderr}")
         sys.exit(1)
     except json.JSONDecodeError as e:
-        print(f"Error parsing JSON from command {' '.join(cmd)}: {e}")
+        console.print(
+            f"[red]✗ Error parsing JSON from command {' '.join(cmd)}:[/red] {e}"
+        )
         sys.exit(1)
 
 
@@ -61,7 +70,9 @@ def get_coder_api_config() -> tuple[str, str]:
     # Get token from environment (try CODER_TOKEN or CODER_SESSION_TOKEN)
     session_token = os.getenv("CODER_TOKEN") or os.getenv("CODER_SESSION_TOKEN")
     if not session_token:
-        print("Error: CODER_TOKEN or CODER_SESSION_TOKEN environment variable not set")
+        console.print(
+            "[red]✗ Error: CODER_TOKEN or CODER_SESSION_TOKEN environment variable not set[/red]"
+        )
         sys.exit(1)
 
     return api_url, session_token
@@ -94,7 +105,9 @@ def fetch_workspace_builds(
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
-        print(f"Warning: Failed to fetch builds for workspace {workspace_id}: {e}")
+        console.print(
+            f"[yellow]⚠ Warning: Failed to fetch builds for workspace {workspace_id}:[/yellow] {e}"
+        )
         return []
 
 
@@ -143,7 +156,9 @@ def calculate_build_usage_hours(build: dict[str, Any]) -> float:
 
         return 0.0
     except Exception as e:
-        print(f"Warning: Error calculating build usage hours: {e}")
+        console.print(
+            f"[yellow]⚠ Warning: Error calculating build usage hours:[/yellow] {e}"
+        )
         return 0.0
 
 
@@ -191,6 +206,7 @@ def fetch_user_activity_insights(
     headers = {"Coder-Session-Token": session_token}
     params = {"start_time": start_time, "end_time": end_time}
 
+    response = None
     try:
         response = requests.get(url, headers=headers, params=params, timeout=30)
         response.raise_for_status()
@@ -207,10 +223,12 @@ def fetch_user_activity_insights(
 
         return activity_map
     except requests.RequestException as e:
-        print(f"Warning: Failed to fetch user activity insights: {e}")
+        console.print(
+            f"[yellow]⚠ Warning: Failed to fetch user activity insights:[/yellow] {e}"
+        )
         try:
             error_details = response.json() if response else {}
-            print(f"Error details: {error_details}")
+            console.print(f"[yellow]Error details:[/yellow] {error_details}")
         except Exception:
             pass
         return {}
@@ -233,7 +251,9 @@ def get_historical_participant_data(bucket_name: str) -> dict[str, dict[str, Any
             'last_name': str | None
         }
     """
-    print("Fetching historical participant data from previous snapshot...")
+    console.print(
+        "[cyan]Fetching historical participant data from previous snapshot...[/cyan]"
+    )
 
     try:
         storage_client = storage.Client()
@@ -244,20 +264,20 @@ def get_historical_participant_data(bucket_name: str) -> dict[str, dict[str, Any
         blobs = list(bucket.list_blobs(prefix="snapshots/"))
 
         if not blobs:
-            print("  No previous snapshots found")
+            console.print("  [yellow]No previous snapshots found[/yellow]")
             return {}
 
         # Sort by name (which includes timestamp) to get most recent
         snapshot_blobs = [b for b in blobs if b.name.endswith(".json")]
         if not snapshot_blobs:
-            print("  No snapshot JSON files found")
+            console.print("  [yellow]No snapshot JSON files found[/yellow]")
             return {}
 
         # Get the most recent snapshot (last in sorted order)
         snapshot_blobs.sort(key=lambda b: b.name)
         latest_blob = snapshot_blobs[-1]
 
-        print(f"  Using previous snapshot: {latest_blob.name}")
+        console.print(f"  [dim]Using previous snapshot: {latest_blob.name}[/dim]")
 
         content = latest_blob.download_as_text()
         snapshot = json.loads(content)
@@ -277,10 +297,14 @@ def get_historical_participant_data(bucket_name: str) -> dict[str, dict[str, Any
                     "last_name": last_name,
                 }
 
-        print(f"✓ Loaded historical data for {len(historical_data)} participants")
+        console.print(
+            f"[green]✓[/green] Loaded historical data for {len(historical_data)} participants"
+        )
         return historical_data
     except Exception as e:
-        print(f"  Warning: Could not load historical data: {e}")
+        console.print(
+            f"  [yellow]⚠ Warning: Could not load historical data:[/yellow] {e}"
+        )
         return {}
 
 
@@ -296,7 +320,7 @@ def get_participant_mappings() -> dict[str, dict[str, Any]]:
             'last_name': str | None
         }
     """
-    print("Fetching current participant data from Firestore...")
+    console.print("[cyan]Fetching current participant data from Firestore...[/cyan]")
 
     project_id = "coderd"
     database_id = "onboarding"
@@ -316,7 +340,9 @@ def get_participant_mappings() -> dict[str, dict[str, Any]]:
                 "last_name": data.get("last_name"),
             }
 
-    print(f"✓ Loaded {len(mappings)} current participant mappings")
+    console.print(
+        f"[green]✓[/green] Loaded {len(mappings)} current participant mappings"
+    )
     return mappings
 
 
@@ -340,7 +366,7 @@ def merge_participant_data(
     dict[str, dict[str, Any]]
         Merged participant data with historical preservation
     """
-    print("Merging historical and current participant data...")
+    console.print("[cyan]Merging historical and current participant data...[/cyan]")
 
     # Start with historical data (preserves deleted participants)
     merged = historical_data.copy()
@@ -349,11 +375,11 @@ def merge_participant_data(
     for handle, data in current_data.items():
         merged[handle] = data
 
-    print(f"✓ Merged data: {len(merged)} total participants")
-    print(
-        f"  - Historical only (deleted): {len(set(historical_data.keys()) - set(current_data.keys()))}"
+    console.print(f"[green]✓[/green] Merged data: {len(merged)} total participants")
+    console.print(
+        f"  [dim]Historical only (deleted):[/dim] {len(set(historical_data.keys()) - set(current_data.keys()))}"
     )
-    print(f"  - Current (active): {len(current_data)}")
+    console.print(f"  [dim]Current (active):[/dim] {len(current_data)}")
 
     return merged
 
@@ -377,7 +403,7 @@ def fetch_workspaces(
     list[dict[str, Any]]
         List of workspace objects with builds, usage hours, active hours, and team data
     """
-    print("Fetching workspaces from Coder...")
+    console.print("[cyan]Fetching workspaces from Coder...[/cyan]")
     workspaces = run_command(["coder", "list", "-a", "-o", "json"])
 
     # Teams to exclude from analytics
@@ -400,16 +426,16 @@ def fetch_workspaces(
 
     filtered_count = original_count - len(filtered_workspaces)
     if filtered_count > 0:
-        print(
-            f"✓ Filtered out {filtered_count} workspaces from excluded teams: {', '.join(excluded_teams)}"
+        console.print(
+            f"[green]✓[/green] Filtered out {filtered_count} workspaces from excluded teams: {', '.join(excluded_teams)}"
         )
 
-    print(f"✓ Fetched {len(filtered_workspaces)} workspaces")
+    console.print(f"[green]✓[/green] Fetched {len(filtered_workspaces)} workspaces")
 
     # Fetch user activity insights (active hours)
     # Use a wide time range to capture all activity
     # Find earliest workspace creation date
-    print("Fetching user activity insights...")
+    console.print("[cyan]Fetching user activity insights...[/cyan]")
     earliest_created = min(
         (
             datetime.fromisoformat(ws.get("created_at", "").replace("Z", "+00:00"))
@@ -431,10 +457,14 @@ def fetch_workspaces(
     activity_map = fetch_user_activity_insights(
         api_url, session_token, start_time, end_time
     )
-    print(f"✓ Fetched activity data for {len(activity_map)} users")
+    console.print(
+        f"[green]✓[/green] Fetched activity data for {len(activity_map)} users"
+    )
 
     # Enrich workspaces with full build history and usage hours
-    print("Enriching workspaces with build history and active hours...")
+    console.print(
+        "[cyan]Enriching workspaces with build history and active hours...[/cyan]"
+    )
     for i, workspace in enumerate(filtered_workspaces, 1):
         workspace_id = workspace.get("id")
         if workspace_id:
@@ -463,17 +493,19 @@ def fetch_workspaces(
 
         # Progress indicator
         if i % 10 == 0:
-            print(f"  Processed {i}/{len(filtered_workspaces)} workspaces...")
+            console.print(
+                f"  [dim]Processed {i}/{len(filtered_workspaces)} workspaces...[/dim]"
+            )
 
-    print(
-        f"✓ Enriched {len(filtered_workspaces)} workspaces with build history and active hours"
+    console.print(
+        f"[green]✓[/green] Enriched {len(filtered_workspaces)} workspaces with build history and active hours"
     )
     return filtered_workspaces
 
 
 def fetch_templates() -> list[dict[str, Any]]:
     """Fetch all templates using Coder CLI."""
-    print("Fetching templates from Coder...")
+    console.print("[cyan]Fetching templates from Coder...[/cyan]")
     templates_raw = run_command(["coder", "templates", "list", "-o", "json"])
 
     # Unwrap the "Template" object from each item
@@ -487,7 +519,7 @@ def fetch_templates() -> list[dict[str, Any]]:
     # Filter out kubernetes-gpu template
     templates = [t for t in templates if t.get("name") != "kubernetes-gpu"]
 
-    print(f"✓ Fetched {len(templates)} templates")
+    console.print(f"[green]✓[/green] Fetched {len(templates)} templates")
     return templates
 
 
@@ -503,7 +535,7 @@ def create_snapshot(
         "templates": templates,
     }
 
-    print(f"✓ Created snapshot at {timestamp}")
+    console.print(f"[green]✓[/green] Created snapshot at {timestamp}")
     return snapshot
 
 
@@ -513,10 +545,10 @@ def ensure_bucket_exists(bucket_name: str) -> storage.Bucket:
 
     try:
         bucket = client.get_bucket(bucket_name)
-        print(f"✓ Bucket '{bucket_name}' exists")
+        console.print(f"[green]✓[/green] Bucket '{bucket_name}' exists")
         return bucket
     except Exception:
-        print(f"Bucket '{bucket_name}' doesn't exist, creating...")
+        console.print(f"[cyan]Bucket '{bucket_name}' doesn't exist, creating...[/cyan]")
         bucket = client.create_bucket(bucket_name)
 
         # Set lifecycle policy to delete objects older than 90 days
@@ -524,13 +556,15 @@ def ensure_bucket_exists(bucket_name: str) -> storage.Bucket:
         bucket.lifecycle_rules = [lifecycle_rule]
         bucket.patch()
 
-        print(f"✓ Created bucket '{bucket_name}' with 90-day lifecycle policy")
+        console.print(
+            f"[green]✓[/green] Created bucket '{bucket_name}' with 90-day lifecycle policy"
+        )
         return bucket
 
 
 def upload_to_gcs(snapshot: dict[str, Any], bucket_name: str) -> None:
     """Upload snapshot to GCS bucket."""
-    print(f"Uploading snapshot to gs://{bucket_name}/...")
+    console.print(f"[cyan]Uploading snapshot to gs://{bucket_name}/...[/cyan]")
 
     # Ensure bucket exists
     bucket = ensure_bucket_exists(bucket_name)
@@ -544,14 +578,14 @@ def upload_to_gcs(snapshot: dict[str, Any], bucket_name: str) -> None:
 
     blob = bucket.blob(timestamp_filename)
     blob.upload_from_string(snapshot_json, content_type="application/json")
-    print(f"✓ Uploaded to {timestamp_filename}")
+    console.print(f"[green]✓[/green] Uploaded to {timestamp_filename}")
 
     # Update latest.json
     latest_blob = bucket.blob("latest.json")
     latest_blob.upload_from_string(snapshot_json, content_type="application/json")
-    print("✓ Updated latest.json")
+    console.print("[green]✓[/green] Updated latest.json")
 
-    print("\n✓ Successfully uploaded snapshot to GCS")
+    console.print("\n[green]✓ Successfully uploaded snapshot to GCS[/green]")
 
 
 def save_local_copy(
@@ -560,15 +594,15 @@ def save_local_copy(
     """Save a local copy of the snapshot for debugging."""
     with open(output_path, "w") as f:
         json.dump(snapshot, f, indent=2)
-    print(f"✓ Saved local copy to {output_path}")
+    console.print(f"[green]✓[/green] Saved local copy to {output_path}")
 
 
 def main() -> None:
     """Execute the main workflow."""
-    print("=" * 60)
-    print("Coder Analytics Collection Script")
-    print("=" * 60)
-    print()
+    console.print("[bold cyan]" + "=" * 60 + "[/bold cyan]")
+    console.print("[bold cyan]Coder Analytics Collection Script[/bold cyan]")
+    console.print("[bold cyan]" + "=" * 60 + "[/bold cyan]")
+    console.print()
 
     # Configuration
     bucket_name = "coder-analytics-snapshots"
@@ -576,7 +610,7 @@ def main() -> None:
 
     # Get Coder API configuration
     api_url, session_token = get_coder_api_config()
-    print(f"✓ Using Coder API: {api_url}")
+    console.print(f"[green]✓[/green] Using Coder API: {api_url}")
 
     # Fetch participant data from multiple sources and merge
     # Historical data preserves team assignments for deleted participants
@@ -598,17 +632,17 @@ def main() -> None:
     # Upload to GCS
     upload_to_gcs(snapshot, bucket_name)
 
-    print()
-    print("=" * 60)
-    print("✓ Collection complete!")
-    print("=" * 60)
+    console.print()
+    console.print("[bold green]" + "=" * 60 + "[/bold green]")
+    console.print("[bold green]✓ Collection complete![/bold green]")
+    console.print("[bold green]" + "=" * 60 + "[/bold green]")
 
     # Print summary
-    print("\nSummary:")
-    print(f"  Workspaces: {len(workspaces)}")
-    print(f"  Templates: {len(templates)}")
-    print(f"  Timestamp: {snapshot['timestamp']}")
-    print(f"  Bucket: gs://{bucket_name}/")
+    console.print("\n[bold]Summary:[/bold]")
+    console.print(f"  [cyan]Workspaces:[/cyan] {len(workspaces)}")
+    console.print(f"  [cyan]Templates:[/cyan] {len(templates)}")
+    console.print(f"  [cyan]Timestamp:[/cyan] {snapshot['timestamp']}")
+    console.print(f"  [cyan]Bucket:[/cyan] gs://{bucket_name}/")
 
 
 if __name__ == "__main__":
