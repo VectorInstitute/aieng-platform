@@ -32,10 +32,13 @@ export async function GET() {
     const workspaceMetrics = enrichWorkspaceData(snapshot.workspaces);
     console.log(`Enriched ${workspaceMetrics.length} workspace metrics`);
 
-    // Calculate aggregated metrics
-    const teamMetrics = aggregateByTeam(workspaceMetrics);
+    // Get accumulated usage from snapshot (if available)
+    const accumulatedUsage = snapshot.accumulated_usage;
+
+    // Calculate aggregated metrics with accumulated usage
+    const teamMetrics = aggregateByTeam(workspaceMetrics, accumulatedUsage);
     const platformMetrics = calculatePlatformMetrics(workspaceMetrics);
-    const templateMetrics = calculateTemplateMetrics(workspaceMetrics, snapshot.templates);
+    const templateMetrics = calculateTemplateMetrics(workspaceMetrics, snapshot.templates, accumulatedUsage);
     const dailyEngagement = calculateDailyEngagement(snapshot.workspaces);
 
     console.log(`Calculated metrics for ${teamMetrics.length} teams and ${dailyEngagement.length} days of engagement`);

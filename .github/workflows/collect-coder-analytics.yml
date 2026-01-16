@@ -64,7 +64,7 @@ jobs:
           CODER_SESSION_TOKEN: ${{ secrets.CODER_TOKEN }}
         run: |
           echo "Running analytics collection script..."
-          python3 scripts/collect_coder_analytics.py
+          python3 -m coder.analytics.collect
 
       - name: Generate summary
         if: success()

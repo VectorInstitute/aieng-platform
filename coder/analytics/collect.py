@@ -234,6 +234,49 @@ def fetch_user_activity_insights(
         return {}
 
 
+def get_latest_snapshot(bucket_name: str) -> dict[str, Any] | None:
+    """Get the most recent snapshot from GCS.
+
+    Parameters
+    ----------
+    bucket_name : str
+        Name of the GCS bucket containing snapshots
+
+    Returns
+    -------
+    dict[str, Any] | None
+        The previous snapshot data, or None if not found
+    """
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+
+        # List all snapshots and get the most recent one
+        blobs = list(bucket.list_blobs(prefix="snapshots/"))
+
+        if not blobs:
+            return None
+
+        # Sort by name (which includes timestamp) to get most recent
+        snapshot_blobs = [b for b in blobs if b.name.endswith(".json")]
+        if not snapshot_blobs:
+            return None
+
+        # Get the most recent snapshot (last in sorted order)
+        snapshot_blobs.sort(key=lambda b: b.name)
+        latest_blob = snapshot_blobs[-1]
+
+        console.print(f"  [dim]Using previous snapshot: {latest_blob.name}[/dim]")
+
+        content = latest_blob.download_as_text()
+        return json.loads(content)
+    except Exception as e:
+        console.print(
+            f"  [yellow]⚠ Warning: Could not load previous snapshot:[/yellow] {e}"
+        )
+        return None
+
+
 def get_historical_participant_data(bucket_name: str) -> dict[str, dict[str, Any]]:
     """Get historical participant data from the previous snapshot.
 
@@ -255,57 +298,105 @@ def get_historical_participant_data(bucket_name: str) -> dict[str, dict[str, Any
         "[cyan]Fetching historical participant data from previous snapshot...[/cyan]"
     )
 
-    try:
-        storage_client = storage.Client()
-        bucket = storage_client.bucket(bucket_name)
-
-        # List all snapshots and get the most recent one
-        # This ensures we always build on the previous collection's data
-        blobs = list(bucket.list_blobs(prefix="snapshots/"))
-
-        if not blobs:
-            console.print("  [yellow]No previous snapshots found[/yellow]")
-            return {}
-
-        # Sort by name (which includes timestamp) to get most recent
-        snapshot_blobs = [b for b in blobs if b.name.endswith(".json")]
-        if not snapshot_blobs:
-            console.print("  [yellow]No snapshot JSON files found[/yellow]")
-            return {}
-
-        # Get the most recent snapshot (last in sorted order)
-        snapshot_blobs.sort(key=lambda b: b.name)
-        latest_blob = snapshot_blobs[-1]
-
-        console.print(f"  [dim]Using previous snapshot: {latest_blob.name}[/dim]")
-
-        content = latest_blob.download_as_text()
-        snapshot = json.loads(content)
-
-        historical_data = {}
-        for workspace in snapshot.get("workspaces", []):
-            owner_name = workspace.get("owner_name", "").lower()
-            team_name = workspace.get("team_name")
-            first_name = workspace.get("owner_first_name")
-            last_name = workspace.get("owner_last_name")
-
-            # Only store if we have actual data (not null/None)
-            if team_name:
-                historical_data[owner_name] = {
-                    "team_name": team_name,
-                    "first_name": first_name,
-                    "last_name": last_name,
-                }
-
-        console.print(
-            f"[green]✓[/green] Loaded historical data for {len(historical_data)} participants"
-        )
-        return historical_data
-    except Exception as e:
-        console.print(
-            f"  [yellow]⚠ Warning: Could not load historical data:[/yellow] {e}"
-        )
+    snapshot = get_latest_snapshot(bucket_name)
+    if not snapshot:
+        console.print("  [yellow]No previous snapshots found[/yellow]")
         return {}
+
+    historical_data = {}
+    for workspace in snapshot.get("workspaces", []):
+        owner_name = workspace.get("owner_name", "").lower()
+        team_name = workspace.get("team_name")
+        first_name = workspace.get("owner_first_name")
+        last_name = workspace.get("owner_last_name")
+
+        # Only store if we have actual data (not null/None)
+        if team_name:
+            historical_data[owner_name] = {
+                "team_name": team_name,
+                "first_name": first_name,
+                "last_name": last_name,
+            }
+
+    console.print(
+        f"[green]✓[/green] Loaded historical data for {len(historical_data)} participants"
+    )
+    return historical_data
+
+
+def get_historical_accumulated_usage(
+    bucket_name: str,
+) -> dict[str, dict[str, Any]]:
+    """Get historical accumulated usage data from the previous snapshot.
+
+    Parameters
+    ----------
+    bucket_name : str
+        Name of the GCS bucket containing snapshots
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Mapping of user_template key -> {
+            'owner_name': str,
+            'template_name': str,
+            'team_name': str,
+            'total_accumulated_hours': float,
+            'last_updated': str,
+            'first_seen': str
+        }
+    """
+    console.print(
+        "[cyan]Fetching historical accumulated usage from previous snapshot...[/cyan]"
+    )
+
+    snapshot = get_latest_snapshot(bucket_name)
+    if not snapshot:
+        console.print("  [yellow]No previous snapshots found[/yellow]")
+        return {}
+
+    accumulated_usage = snapshot.get("accumulated_usage", {})
+
+    console.print(
+        f"[green]✓[/green] Loaded {len(accumulated_usage)} accumulated usage records"
+    )
+    return accumulated_usage
+
+
+def get_historical_workspace_snapshots(
+    bucket_name: str,
+) -> dict[str, dict[str, Any]]:
+    """Get workspace usage snapshots from the previous collection.
+
+    Parameters
+    ----------
+    bucket_name : str
+        Name of the GCS bucket containing snapshots
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Mapping of workspace_id -> {
+            'active_hours': float,
+            'owner_name': str,
+            'template_name': str
+        }
+    """
+    console.print(
+        "[cyan]Fetching historical workspace snapshots from previous snapshot...[/cyan]"
+    )
+
+    snapshot = get_latest_snapshot(bucket_name)
+    if not snapshot:
+        console.print("  [yellow]No previous snapshots found[/yellow]")
+        return {}
+
+    workspace_snapshots = snapshot.get("workspace_usage_snapshot", {})
+
+    console.print(
+        f"[green]✓[/green] Loaded {len(workspace_snapshots)} workspace usage snapshots"
+    )
+    return workspace_snapshots
 
 
 def get_participant_mappings() -> dict[str, dict[str, Any]]:
@@ -382,6 +473,150 @@ def merge_participant_data(
     console.print(f"  [dim]Current (active):[/dim] {len(current_data)}")
 
     return merged
+
+
+def calculate_accumulated_usage(
+    current_workspaces: list[dict[str, Any]],
+    historical_accumulated: dict[str, dict[str, Any]],
+    historical_workspace_snapshots: dict[str, dict[str, Any]],
+    participant_mappings: dict[str, dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    """Calculate accumulated active hours, preserving history.
+
+    Preserves history even for deleted workspaces. Tracks active hours (from
+    Insights API) which represent time with active app connections.
+
+    Parameters
+    ----------
+    current_workspaces : list[dict[str, Any]]
+        List of current workspace objects with active_hours (from Insights API)
+    historical_accumulated : dict[str, dict[str, Any]]
+        Historical accumulated usage from previous snapshot
+    historical_workspace_snapshots : dict[str, dict[str, Any]]
+        Workspace usage from previous snapshot (for delta calculation)
+    participant_mappings : dict[str, dict[str, Any]]
+        Current participant team mappings
+
+    Returns
+    -------
+    tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]
+        (accumulated_usage, workspace_usage_snapshot)
+    """
+    console.print(
+        "[cyan]Calculating accumulated active hours with historical preservation...[/cyan]"
+    )
+
+    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    # Start with historical accumulated usage (preserves deleted workspaces)
+    accumulated_usage = {k: v.copy() for k, v in historical_accumulated.items()}
+
+    # Build new workspace snapshot
+    workspace_usage_snapshot = {}
+
+    # Track per-user active hours (Insights API returns per-user, not per-workspace)
+    user_active_hours: dict[str, float] = {}
+    for workspace in current_workspaces:
+        owner_name = workspace.get("owner_name", "").lower()
+        active_hours = workspace.get("active_hours", 0.0)
+        # Take max since active_hours is per-user (same across all their workspaces)
+        user_active_hours[owner_name] = max(
+            user_active_hours.get(owner_name, 0.0), active_hours
+        )
+
+    # Build workspace snapshot and track user-template combinations
+    user_template_workspaces = {}  # Track workspaces per user-template
+    for workspace in current_workspaces:
+        workspace_id = workspace.get("id")
+        owner_name = workspace.get("owner_name", "").lower()
+        template_name = workspace.get("template_name", "")
+        current_active = user_active_hours.get(owner_name, 0.0)
+
+        if not workspace_id or not owner_name or not template_name:
+            continue
+
+        # Update workspace snapshot for next collection
+        workspace_usage_snapshot[workspace_id] = {
+            "active_hours": current_active,
+            "owner_name": owner_name,
+            "template_name": template_name,
+        }
+
+        # Track workspaces per user-template for delta calculation
+        key = f"{owner_name}_{template_name}"
+        if key not in user_template_workspaces:
+            user_template_workspaces[key] = {
+                "owner_name": owner_name,
+                "template_name": template_name,
+                "current_active": current_active,
+                "workspace_ids": [],
+            }
+        user_template_workspaces[key]["workspace_ids"].append(workspace_id)
+
+    # Now calculate deltas per user-template combination (not per workspace)
+    for key, data in user_template_workspaces.items():
+        owner_name = data["owner_name"]
+        template_name = data["template_name"]
+        current_active = data["current_active"]
+        workspace_ids = data["workspace_ids"]
+
+        # Get previous active hours for this user from any of their workspaces
+        # (they all have the same per-user value)
+        previous_active = 0.0
+        for ws_id in workspace_ids:
+            if ws_id in historical_workspace_snapshots:
+                previous_active = historical_workspace_snapshots[ws_id].get(
+                    "active_hours", 0.0
+                )
+                break  # All workspaces have same per-user value
+
+        # Calculate delta (new active hours since last snapshot)
+        delta = max(0.0, current_active - previous_active)
+
+        # Get team name (current mapping takes precedence, then historical)
+        participant_data = participant_mappings.get(owner_name, {})
+        team_name = participant_data.get("team_name")
+        if not team_name and key in accumulated_usage:
+            # Preserve historical team assignment
+            team_name = accumulated_usage[key].get("team_name", "Unassigned")
+        if not team_name:
+            team_name = "Unassigned"
+
+        # Update accumulated usage (once per user-template combination)
+        if key in accumulated_usage:
+            # Existing record: add delta to accumulated total
+            accumulated_usage[key]["total_active_hours"] += delta
+            accumulated_usage[key]["last_updated"] = now
+            # Update team name (in case it changed)
+            accumulated_usage[key]["team_name"] = team_name
+            # Add new workspace IDs to the list
+            existing_ws_ids = set(accumulated_usage[key].get("workspace_ids", []))
+            for ws_id in workspace_ids:
+                existing_ws_ids.add(ws_id)
+            accumulated_usage[key]["workspace_ids"] = list(existing_ws_ids)
+        else:
+            # New record: start accumulating
+            accumulated_usage[key] = {
+                "owner_name": owner_name,
+                "template_name": template_name,
+                "team_name": team_name,
+                "total_active_hours": current_active,
+                "workspace_ids": workspace_ids,
+                "last_updated": now,
+                "first_seen": now,
+            }
+
+    console.print(
+        f"[green]✓[/green] Calculated accumulated active hours for {len(accumulated_usage)} user-template combinations"
+    )
+    console.print(
+        f"  [dim]Current workspace snapshots:[/dim] {len(workspace_usage_snapshot)}"
+    )
+    console.print(
+        f"  [dim]Historical records preserved:[/dim] {len(accumulated_usage) - len(workspace_usage_snapshot)}"
+    )
+
+    return accumulated_usage, workspace_usage_snapshot
 
 
 def fetch_workspaces(
@@ -524,18 +759,25 @@ def fetch_templates() -> list[dict[str, Any]]:
 
 
 def create_snapshot(
-    workspaces: list[dict[str, Any]], templates: list[dict[str, Any]]
+    workspaces: list[dict[str, Any]],
+    templates: list[dict[str, Any]],
+    accumulated_usage: dict[str, dict[str, Any]],
+    workspace_usage_snapshot: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
-    """Create a snapshot object with timestamp."""
+    """Create a snapshot object with timestamp and accumulated usage data."""
     timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     snapshot = {
         "timestamp": timestamp,
         "workspaces": workspaces,
         "templates": templates,
+        "accumulated_usage": accumulated_usage,
+        "workspace_usage_snapshot": workspace_usage_snapshot,
     }
 
     console.print(f"[green]✓[/green] Created snapshot at {timestamp}")
+    console.print(f"  [dim]Accumulated usage records:[/dim] {len(accumulated_usage)}")
+    console.print(f"  [dim]Workspace snapshots:[/dim] {len(workspace_usage_snapshot)}")
     return snapshot
 
 
@@ -618,12 +860,26 @@ def main() -> None:
     current_data = get_participant_mappings()
     participant_mappings = merge_participant_data(historical_data, current_data)
 
+    # Fetch historical accumulated usage data
+    historical_accumulated = get_historical_accumulated_usage(bucket_name)
+    historical_workspace_snapshots = get_historical_workspace_snapshots(bucket_name)
+
     # Fetch data (with filtering and build enrichment)
     workspaces = fetch_workspaces(participant_mappings, api_url, session_token)
     templates = fetch_templates()
 
-    # Create snapshot
-    snapshot = create_snapshot(workspaces, templates)
+    # Calculate accumulated usage with historical preservation
+    accumulated_usage, workspace_usage_snapshot = calculate_accumulated_usage(
+        workspaces,
+        historical_accumulated,
+        historical_workspace_snapshots,
+        participant_mappings,
+    )
+
+    # Create snapshot with accumulated usage data
+    snapshot = create_snapshot(
+        workspaces, templates, accumulated_usage, workspace_usage_snapshot
+    )
 
     # Save local copy if requested
     if save_local:
@@ -641,6 +897,7 @@ def main() -> None:
     console.print("\n[bold]Summary:[/bold]")
     console.print(f"  [cyan]Workspaces:[/cyan] {len(workspaces)}")
     console.print(f"  [cyan]Templates:[/cyan] {len(templates)}")
+    console.print(f"  [cyan]Accumulated Usage Records:[/cyan] {len(accumulated_usage)}")
     console.print(f"  [cyan]Timestamp:[/cyan] {snapshot['timestamp']}")
     console.print(f"  [cyan]Bucket:[/cyan] gs://{bucket_name}/")
 
