@@ -293,7 +293,10 @@ export function enrichWorkspaceData(
 /**
  * Aggregate workspace metrics by team
  */
-export function aggregateByTeam(workspaces: WorkspaceMetrics[]): TeamMetrics[] {
+export function aggregateByTeam(
+  workspaces: WorkspaceMetrics[],
+  accumulatedUsage?: Record<string, { owner_name: string; template_name: string; team_name: string; total_active_hours: number; workspace_ids?: string[] }>
+): TeamMetrics[] {
   const teams = new Map<string, WorkspaceMetrics[]>();
 
   // Group workspaces by team
@@ -315,8 +318,31 @@ export function aggregateByTeam(workspaces: WorkspaceMetrics[]): TeamMetrics[] {
     // Total workspace hours (sum of all workspace lifetime hours)
     const totalWorkspaceHours = teamWorkspaces.reduce((sum, w) => sum + w.workspace_hours, 0);
 
-    // Total active hours (aggregated correctly per-user, capped at their workspace totals)
-    const totalActiveHours = calculateTotalActiveHours(teamWorkspaces);
+    // Calculate total active hours and total workspaces from accumulated usage data
+    let totalActiveHours = calculateTotalActiveHours(teamWorkspaces);  // Default to current
+    let totalWorkspacesEver = teamWorkspaces.length;  // Default to current count
+
+    if (accumulatedUsage) {
+      totalActiveHours = 0;
+      const allWorkspaceIds = new Set<string>();
+      let hasWorkspaceIds = false;
+
+      Object.values(accumulatedUsage).forEach((record) => {
+        if (record.team_name === teamName) {
+          totalActiveHours += record.total_active_hours;
+          // Collect all unique workspace IDs ever created for this team
+          if (record.workspace_ids && record.workspace_ids.length > 0) {
+            hasWorkspaceIds = true;
+            record.workspace_ids.forEach(id => allWorkspaceIds.add(id));
+          }
+        }
+      });
+
+      // Only use accumulated count if we have workspace_ids data
+      if (hasWorkspaceIds) {
+        totalWorkspacesEver = allWorkspaceIds.size;
+      }
+    }
 
     // Average workspace hours
     const avgWorkspaceHours =
@@ -371,7 +397,7 @@ export function aggregateByTeam(workspaces: WorkspaceMetrics[]): TeamMetrics[] {
 
     return {
       team_name: teamName,
-      total_workspaces: teamWorkspaces.length,
+      total_workspaces: totalWorkspacesEver,  // All-time count including deleted
       unique_active_users: activeUsers.size,
       total_workspace_hours: Math.round(totalWorkspaceHours),
       total_active_hours: Math.round(totalActiveHours),
@@ -451,7 +477,8 @@ export function calculatePlatformMetrics(workspaces: WorkspaceMetrics[]): Platfo
  */
 export function calculateTemplateMetrics(
   workspaces: WorkspaceMetrics[],
-  templates: CoderTemplate[]
+  templates: CoderTemplate[],
+  accumulatedUsage?: Record<string, { owner_name: string; template_name: string; team_name: string; total_active_hours: number; workspace_ids?: string[] }>
 ): TemplateMetrics[] {
   // Group workspaces by template
   const templateMap = new Map<string, WorkspaceMetrics[]>();
@@ -469,8 +496,31 @@ export function calculateTemplateMetrics(
     // Total workspace hours (sum of all workspace lifetime hours)
     const totalWorkspaceHours = templateWorkspaces.reduce((sum, w) => sum + w.workspace_hours, 0);
 
-    // Total active hours (aggregated correctly per-user, capped at their workspace totals)
-    const totalActiveHours = calculateTotalActiveHours(templateWorkspaces);
+    // Calculate total active hours and total workspaces from accumulated usage data
+    let totalActiveHours = calculateTotalActiveHours(templateWorkspaces);  // Default to current
+    let totalWorkspacesEver = templateWorkspaces.length;  // Default to current count
+
+    if (accumulatedUsage) {
+      totalActiveHours = 0;
+      const allWorkspaceIds = new Set<string>();
+      let hasWorkspaceIds = false;
+
+      Object.values(accumulatedUsage).forEach((record) => {
+        if (record.template_name === template.name) {
+          totalActiveHours += record.total_active_hours;
+          // Collect all unique workspace IDs ever created for this template
+          if (record.workspace_ids && record.workspace_ids.length > 0) {
+            hasWorkspaceIds = true;
+            record.workspace_ids.forEach(id => allWorkspaceIds.add(id));
+          }
+        }
+      });
+
+      // Only use accumulated count if we have workspace_ids data
+      if (hasWorkspaceIds) {
+        totalWorkspacesEver = allWorkspaceIds.size;
+      }
+    }
 
     // Average workspace hours
     const avgWorkspaceHours =
@@ -493,7 +543,7 @@ export function calculateTemplateMetrics(
       template_id: template.id,
       template_name: template.name,
       template_display_name: template.display_name,
-      total_workspaces: templateWorkspaces.length,
+      total_workspaces: totalWorkspacesEver,  // All-time count including deleted
       active_workspaces: activeWorkspaces.length,
       unique_active_users: activeUsers.size,
       total_workspace_hours: Math.round(totalWorkspaceHours),

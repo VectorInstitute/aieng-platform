@@ -74,10 +74,28 @@ export interface CoderTemplate {
   workspace_count?: number;
 }
 
+export interface AccumulatedUsage {
+  owner_name: string;
+  template_name: string;
+  team_name: string;
+  total_active_hours: number;  // Accumulated active hours including deleted workspaces
+  workspace_ids: string[];  // All workspace IDs ever created for this user-template
+  last_updated: string;  // ISO 8601
+  first_seen: string;  // ISO 8601
+}
+
+export interface WorkspaceUsageSnapshot {
+  active_hours: number;  // Active hours from Insights API
+  owner_name: string;
+  template_name: string;
+}
+
 export interface CoderSnapshot {
   timestamp: string;  // ISO 8601
   workspaces: CoderWorkspace[];
   templates: CoderTemplate[];
+  accumulated_usage?: Record<string, AccumulatedUsage>;  // key: "user_template"
+  workspace_usage_snapshot?: Record<string, WorkspaceUsageSnapshot>;  // key: workspace_id
 }
 
 // ===== Firestore Types =====
@@ -152,7 +170,7 @@ export interface TeamMetrics {
 
   // Time-based metrics
   total_workspace_hours: number;  // Sum of all workspace usage hours (first to last connection)
-  total_active_hours: number;     // Sum of actual active interaction hours from Insights API
+  total_active_hours: number;     // Accumulated active hours from Insights API (includes deleted workspaces)
   avg_workspace_hours: number;    // Average workspace usage hours (first to last connection)
   active_days: number;            // Number of unique days with workspace activity
 
@@ -201,7 +219,7 @@ export interface TemplateMetrics {
   active_workspaces: number;
   unique_active_users: number;    // Number of unique users with activity in last 7 days
   total_workspace_hours: number;  // Sum of workspace usage hours (first to last connection) for this template
-  total_active_hours: number;     // Sum of actual active interaction hours from Insights API
+  total_active_hours: number;     // Accumulated active hours from Insights API (includes deleted workspaces)
   avg_workspace_hours: number;    // Average workspace usage hours (first to last connection)
   team_distribution: Record<string, number>;
 }

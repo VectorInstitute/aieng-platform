@@ -230,32 +230,38 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
       <div className="max-w-7xl mx-auto px-4 md:px-8 pb-8">
         {/* Summary Cards */}
         <div className="grid gap-6 md:grid-cols-3 mb-8 animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-2 border-slate-200 dark:border-slate-700 p-6">
-            <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Total Workspaces
+          <Tooltip content="Total number of workspaces ever created from this template (including deleted workspaces)">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-2 border-slate-200 dark:border-slate-700 p-6">
+              <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+                Total Workspaces
+              </div>
+              <div className="text-3xl font-bold text-slate-900 dark:text-white">
+                {template.total_workspaces}
+              </div>
             </div>
-            <div className="text-3xl font-bold text-slate-900 dark:text-white">
-              {template.total_workspaces}
-            </div>
-          </div>
+          </Tooltip>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-2 border-slate-200 dark:border-slate-700 p-6">
-            <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Active Workspaces
+          <Tooltip content="Number of workspaces that have been active in the last 7 days">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-2 border-slate-200 dark:border-slate-700 p-6">
+              <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+                Active Workspaces
+              </div>
+              <div className="text-3xl font-bold text-vector-turquoise">
+                {template.active_workspaces}
+              </div>
             </div>
-            <div className="text-3xl font-bold text-vector-turquoise">
-              {template.active_workspaces}
-            </div>
-          </div>
+          </Tooltip>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-2 border-slate-200 dark:border-slate-700 p-6">
-            <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Total Hours
+          <Tooltip content="Total hours with active workspace app connections (IDE, terminal, etc.) - measured from Coder Insights API">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-2 border-slate-200 dark:border-slate-700 p-6">
+              <div className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+                Total Active Hours
+              </div>
+              <div className="text-3xl font-bold text-slate-900 dark:text-white">
+                {template.total_active_hours.toLocaleString()}h
+              </div>
             </div>
-            <div className="text-3xl font-bold text-slate-900 dark:text-white">
-              {template.total_workspace_hours.toLocaleString()}h
-            </div>
-          </div>
+          </Tooltip>
         </div>
 
         {/* Teams Table */}
@@ -317,9 +323,9 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                       className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                       onClick={() => handleSort('workspaces_for_template')}
                     >
-                      <Tooltip content="Number of workspaces created by this team from this template">
+                      <Tooltip content="Total number of workspaces ever created by this team from this template (including deleted workspaces)">
                         <div className="flex items-center justify-end gap-2">
-                          Workspaces
+                          Total Workspaces
                           {getSortIcon('workspaces_for_template')}
                         </div>
                       </Tooltip>
@@ -337,20 +343,9 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                     </th>
                     <th
                       className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                      onClick={() => handleSort('total_workspace_hours')}
-                    >
-                      <Tooltip content="Total accumulated time across all workspace sessions, from startup to shutdown">
-                        <div className="flex items-center justify-end gap-2">
-                          Total Hours
-                          {getSortIcon('total_workspace_hours')}
-                        </div>
-                      </Tooltip>
-                    </th>
-                    <th
-                      className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                       onClick={() => handleSort('total_active_hours')}
                     >
-                      <Tooltip content="Total accumulated time when workspaces have active app connections (e.g., VS Code connected)">
+                      <Tooltip content="Total hours with active workspace app connections (IDE, terminal, etc.) - measured from Coder Insights API">
                         <div className="flex items-center justify-end gap-2">
                           Active Hours
                           {getSortIcon('total_active_hours')}
@@ -388,9 +383,6 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-vector-violet/10 text-vector-violet border border-vector-violet/30">
                           {team.unique_active_users}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm text-slate-700 dark:text-slate-300">
-                        {team.total_workspace_hours.toLocaleString()}h
                       </td>
                       <td className="px-6 py-4 text-right text-sm">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
