@@ -26,7 +26,7 @@ console = Console()
 
 
 try:
-    from google.cloud import firestore, storage  # type: ignore[attr-defined]
+    from google.cloud import firestore, storage
 except ImportError:
     console.print(
         "[red]Error: google-cloud-storage or google-cloud-firestore not installed.[/red]"

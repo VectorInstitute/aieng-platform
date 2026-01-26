@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
-from google.cloud import firestore  # type: ignore[attr-defined]
+from google.cloud import firestore
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
@@ -58,7 +58,7 @@ def validate_csv_data(df: pd.DataFrame) -> tuple[bool, list[str]]:
 
     # Validate each row
     for idx, row in df.iterrows():
-        row_num = idx + 2  # +2 because of 0-indexing and header row
+        row_num = idx + 2  # type: ignore[operator]  # +2 because of 0-indexing and header row
 
         # Validate github_handle
         if pd.isna(row["github_handle"]) or not row["github_handle"]:

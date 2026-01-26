@@ -183,7 +183,7 @@ def get_team_by_name(db: firestore.Client, team_name: str) -> dict[str, Any] | N
         Team document data or None if not found.
     """
     teams_ref = db.collection(COLLECTION_TEAMS)
-    query = teams_ref.where(filter=FieldFilter("team_name", "==", team_name))  # type: ignore[no-untyped-call]
+    query = teams_ref.where(filter=FieldFilter("team_name", "==", team_name))
     results = list(query.stream())
 
     if not results:
