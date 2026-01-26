@@ -14,7 +14,7 @@ import firebase_admin
 import jwt
 from firebase_admin import auth, credentials
 from flask import Flask, request
-from google.cloud import firestore  # type: ignore[attr-defined]
+from google.cloud import firestore
 
 
 # Initialize Flask app
@@ -182,13 +182,13 @@ def generate_custom_token(github_handle: str) -> tuple[bool, str | None, str | N
         return False, None, error_msg
 
 
-@app.route("/health", methods=["GET"])  # type: ignore[misc]
+@app.route("/health", methods=["GET"])  # type: ignore[untyped-decorator]
 def health() -> tuple[dict[str, str], int]:
     """Health check endpoint."""
     return {"status": "healthy"}, 200
 
 
-@app.route("/generate-token", methods=["POST"])  # type: ignore[misc]
+@app.route("/generate-token", methods=["POST"])  # type: ignore[untyped-decorator]
 def generate_token() -> tuple[dict[str, Any], int]:
     """
     Generate a fresh Firebase custom token for a workspace.

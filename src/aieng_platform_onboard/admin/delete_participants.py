@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pandas as pd
-from google.cloud import firestore  # type: ignore[attr-defined]
+from google.cloud import firestore
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table

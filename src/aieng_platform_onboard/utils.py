@@ -120,7 +120,7 @@ def fetch_token_from_service(  # noqa: PLR0911
         # Get identity token for authentication
         # Try to get identity token
         # In workspaces, this will use the compute service account
-        credentials, project_id = google.auth.default()  # type: ignore[no-untyped-call]
+        credentials, project_id = google.auth.default()
 
         # Request an identity token instead of an access token
         # This is required for Cloud Run authentication
@@ -128,8 +128,8 @@ def fetch_token_from_service(  # noqa: PLR0911
             # Service account - can create identity tokens
             now = int(time.time())
             payload = {
-                "iss": credentials.service_account_email,
-                "sub": credentials.service_account_email,
+                "iss": credentials.service_account_email,  # type: ignore[attr-defined]
+                "sub": credentials.service_account_email,  # type: ignore[attr-defined]
                 "aud": token_service_url,
                 "iat": now,
                 "exp": now + 3600,
