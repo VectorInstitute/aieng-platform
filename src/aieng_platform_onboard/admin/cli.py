@@ -6,6 +6,9 @@ import sys
 from aieng_platform_onboard.admin.delete_participants import (
     delete_participants_from_csv,
 )
+from aieng_platform_onboard.admin.delete_workspaces import (
+    delete_workspaces_before_date,
+)
 from aieng_platform_onboard.admin.setup_participants import (
     setup_participants_from_csv,
 )
@@ -71,6 +74,34 @@ def main() -> int:
         help="Keep teams even if they become empty after removing participants",
     )
 
+    # delete-workspaces subcommand
+    delete_workspaces_parser = subparsers.add_parser(
+        "delete-workspaces",
+        help="Delete Coder workspaces created before a specified date",
+        description="Remove Coder workspaces and associated GCP resources (VMs, disks)",
+    )
+    delete_workspaces_parser.add_argument(
+        "--before",
+        type=str,
+        required=True,
+        help="Delete workspaces created before this date (YYYY-MM-DD format)",
+    )
+    delete_workspaces_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be deleted without making changes",
+    )
+    delete_workspaces_parser.add_argument(
+        "--orphan",
+        action="store_true",
+        help="Delete workspaces without removing GCP resources (use for broken workspaces)",
+    )
+    delete_workspaces_parser.add_argument(
+        "--no-auto-orphan",
+        action="store_true",
+        help="Disable automatic retry with --orphan when Terraform fails",
+    )
+
     args = parser.parse_args()
 
     # Route to appropriate command handler
@@ -80,6 +111,13 @@ def main() -> int:
         return delete_participants_from_csv(
             args.csv_file,
             delete_empty_teams=not args.keep_empty_teams,
+            dry_run=args.dry_run,
+        )
+    if args.command == "delete-workspaces":
+        return delete_workspaces_before_date(
+            before_date=args.before,
+            orphan=args.orphan,
+            auto_orphan_on_failure=not args.no_auto_orphan,
             dry_run=args.dry_run,
         )
 
