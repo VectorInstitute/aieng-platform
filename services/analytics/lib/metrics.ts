@@ -295,7 +295,7 @@ export function enrichWorkspaceData(
  */
 export function aggregateByTeam(
   workspaces: WorkspaceMetrics[],
-  accumulatedUsage?: Record<string, { owner_name: string; template_name: string; team_name: string; total_active_hours: number; workspace_ids?: string[] }>
+  accumulatedUsage?: Record<string, { owner_name: string; template_name: string; team_name: string; total_active_hours: number; total_workspace_hours?: number; workspace_ids?: string[] }>
 ): TeamMetrics[] {
   const teams = new Map<string, WorkspaceMetrics[]>();
 
@@ -315,21 +315,25 @@ export function aggregateByTeam(
       templateDistribution[workspace.template_display_name] = count + 1;
     });
 
-    // Total workspace hours (sum of all workspace lifetime hours)
-    const totalWorkspaceHours = teamWorkspaces.reduce((sum, w) => sum + w.workspace_hours, 0);
+    // Total workspace hours from current workspaces (sum of all workspace lifetime hours)
+    const currentWorkspaceHours = teamWorkspaces.reduce((sum, w) => sum + w.workspace_hours, 0);
 
-    // Calculate total active hours and total workspaces from accumulated usage data
+    // Calculate total active hours, workspace hours, and total workspaces from accumulated usage data
     let totalActiveHours = calculateTotalActiveHours(teamWorkspaces);  // Default to current
+    let totalWorkspaceHours = currentWorkspaceHours;  // Default to current
     let totalWorkspacesEver = teamWorkspaces.length;  // Default to current count
 
     if (accumulatedUsage) {
       totalActiveHours = 0;
+      totalWorkspaceHours = 0;
       const allWorkspaceIds = new Set<string>();
       let hasWorkspaceIds = false;
 
       Object.values(accumulatedUsage).forEach((record) => {
         if (record.team_name === teamName) {
           totalActiveHours += record.total_active_hours;
+          // Use accumulated workspace hours if available, otherwise fall back to current
+          totalWorkspaceHours += record.total_workspace_hours ?? 0;
           // Collect all unique workspace IDs ever created for this team
           if (record.workspace_ids && record.workspace_ids.length > 0) {
             hasWorkspaceIds = true;
@@ -342,11 +346,16 @@ export function aggregateByTeam(
       if (hasWorkspaceIds) {
         totalWorkspacesEver = allWorkspaceIds.size;
       }
+
+      // If no accumulated workspace hours found, fall back to current
+      if (totalWorkspaceHours === 0) {
+        totalWorkspaceHours = currentWorkspaceHours;
+      }
     }
 
-    // Average workspace hours
+    // Average workspace hours (based on current workspaces for meaningful average)
     const avgWorkspaceHours =
-      teamWorkspaces.length > 0 ? totalWorkspaceHours / teamWorkspaces.length : 0;
+      teamWorkspaces.length > 0 ? currentWorkspaceHours / teamWorkspaces.length : 0;
 
     // Calculate active days (unique dates when workspaces were active)
     const activeDates = new Set<string>();
@@ -478,7 +487,7 @@ export function calculatePlatformMetrics(workspaces: WorkspaceMetrics[]): Platfo
 export function calculateTemplateMetrics(
   workspaces: WorkspaceMetrics[],
   templates: CoderTemplate[],
-  accumulatedUsage?: Record<string, { owner_name: string; template_name: string; team_name: string; total_active_hours: number; workspace_ids?: string[] }>
+  accumulatedUsage?: Record<string, { owner_name: string; template_name: string; team_name: string; total_active_hours: number; total_workspace_hours?: number; workspace_ids?: string[] }>
 ): TemplateMetrics[] {
   // Group workspaces by template
   const templateMap = new Map<string, WorkspaceMetrics[]>();
@@ -493,21 +502,25 @@ export function calculateTemplateMetrics(
     const templateWorkspaces = templateMap.get(template.id) || [];
     const activeWorkspaces = templateWorkspaces.filter((w) => w.activity_status === 'active');
 
-    // Total workspace hours (sum of all workspace lifetime hours)
-    const totalWorkspaceHours = templateWorkspaces.reduce((sum, w) => sum + w.workspace_hours, 0);
+    // Total workspace hours from current workspaces (sum of all workspace lifetime hours)
+    const currentWorkspaceHours = templateWorkspaces.reduce((sum, w) => sum + w.workspace_hours, 0);
 
-    // Calculate total active hours and total workspaces from accumulated usage data
+    // Calculate total active hours, workspace hours, and total workspaces from accumulated usage data
     let totalActiveHours = calculateTotalActiveHours(templateWorkspaces);  // Default to current
+    let totalWorkspaceHours = currentWorkspaceHours;  // Default to current
     let totalWorkspacesEver = templateWorkspaces.length;  // Default to current count
 
     if (accumulatedUsage) {
       totalActiveHours = 0;
+      totalWorkspaceHours = 0;
       const allWorkspaceIds = new Set<string>();
       let hasWorkspaceIds = false;
 
       Object.values(accumulatedUsage).forEach((record) => {
         if (record.template_name === template.name) {
           totalActiveHours += record.total_active_hours;
+          // Use accumulated workspace hours if available
+          totalWorkspaceHours += record.total_workspace_hours ?? 0;
           // Collect all unique workspace IDs ever created for this template
           if (record.workspace_ids && record.workspace_ids.length > 0) {
             hasWorkspaceIds = true;
@@ -520,11 +533,16 @@ export function calculateTemplateMetrics(
       if (hasWorkspaceIds) {
         totalWorkspacesEver = allWorkspaceIds.size;
       }
+
+      // If no accumulated workspace hours found, fall back to current
+      if (totalWorkspaceHours === 0) {
+        totalWorkspaceHours = currentWorkspaceHours;
+      }
     }
 
-    // Average workspace hours
+    // Average workspace hours (based on current workspaces for meaningful average)
     const avgWorkspaceHours =
-      templateWorkspaces.length > 0 ? totalWorkspaceHours / templateWorkspaces.length : 0;
+      templateWorkspaces.length > 0 ? currentWorkspaceHours / templateWorkspaces.length : 0;
 
     // Team distribution
     const teamDistribution: Record<string, number> = {};
@@ -555,27 +573,43 @@ export function calculateTemplateMetrics(
 }
 
 /**
- * Calculate daily user engagement from workspace data
- * Returns array of daily unique users and active workspaces for the last 60 days
+ * Calculate daily user engagement from workspace data, merging with historical data
+ * Returns array of daily unique users and active workspaces for the last 90 days
  *
  * A user is considered "engaged" if they initiate a connection to their workspace via apps, web terminal, or SSH.
  * This function processes all builds for each workspace and extracts all agent connection timestamps.
+ * Historical data from deleted workspaces is preserved via accumulatedDailyEngagement.
  */
-export function calculateDailyEngagement(workspaces: CoderWorkspace[]): DailyEngagement[] {
+export function calculateDailyEngagement(
+  workspaces: CoderWorkspace[],
+  accumulatedDailyEngagement?: Record<string, { unique_users: string[]; active_workspaces: string[] }>
+): DailyEngagement[] {
   const now = new Date();
-  const daysToShow = 60;
+  const daysToShow = 90;
 
   // Create a map to store engagement data by date
   const engagementMap = new Map<string, Set<string>>();
   const workspaceActivityMap = new Map<string, Set<string>>();
 
-  // Initialize map for last 60 days
+  // Initialize map for last 90 days
   for (let i = 0; i < daysToShow; i++) {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
     const dateStr = date.toISOString().split('T')[0];
     engagementMap.set(dateStr, new Set());
     workspaceActivityMap.set(dateStr, new Set());
+  }
+
+  // First, merge in historical data from accumulated daily engagement
+  // This preserves engagement from deleted workspaces
+  if (accumulatedDailyEngagement) {
+    Object.entries(accumulatedDailyEngagement).forEach(([dateStr, data]) => {
+      // Only include dates within our display window
+      if (engagementMap.has(dateStr)) {
+        data.unique_users.forEach(user => engagementMap.get(dateStr)!.add(user));
+        data.active_workspaces.forEach(ws => workspaceActivityMap.get(dateStr)!.add(ws));
+      }
+    });
   }
 
   // Process each workspace and all its builds
