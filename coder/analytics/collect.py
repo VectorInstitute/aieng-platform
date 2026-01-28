@@ -341,7 +341,8 @@ def get_historical_accumulated_usage(
             'owner_name': str,
             'template_name': str,
             'team_name': str,
-            'total_accumulated_hours': float,
+            'total_active_hours': float,
+            'total_workspace_hours': float,
             'last_updated': str,
             'first_seen': str
         }
@@ -363,6 +364,41 @@ def get_historical_accumulated_usage(
     return accumulated_usage
 
 
+def get_historical_daily_engagement(
+    bucket_name: str,
+) -> dict[str, dict[str, Any]]:
+    """Get historical daily engagement data from the previous snapshot.
+
+    Parameters
+    ----------
+    bucket_name : str
+        Name of the GCS bucket containing snapshots
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Mapping of date (YYYY-MM-DD) -> {
+            'unique_users': set of usernames,
+            'active_workspaces': set of workspace ids
+        }
+    """
+    console.print(
+        "[cyan]Fetching historical daily engagement from previous snapshot...[/cyan]"
+    )
+
+    snapshot = get_latest_snapshot(bucket_name)
+    if not snapshot:
+        console.print("  [yellow]No previous snapshots found[/yellow]")
+        return {}
+
+    daily_engagement = snapshot.get("accumulated_daily_engagement", {})
+
+    console.print(
+        f"[green]✓[/green] Loaded {len(daily_engagement)} historical daily engagement records"
+    )
+    return daily_engagement
+
+
 def get_historical_workspace_snapshots(
     bucket_name: str,
 ) -> dict[str, dict[str, Any]]:
@@ -378,6 +414,7 @@ def get_historical_workspace_snapshots(
     dict[str, dict[str, Any]]
         Mapping of workspace_id -> {
             'active_hours': float,
+            'workspace_hours': float,
             'owner_name': str,
             'template_name': str
         }
@@ -475,21 +512,69 @@ def merge_participant_data(
     return merged
 
 
+def _build_user_active_hours(
+    workspaces: list[dict[str, Any]],
+) -> dict[str, float]:
+    """Build mapping of user -> max active hours from workspaces."""
+    user_active_hours: dict[str, float] = {}
+    for workspace in workspaces:
+        owner_name = workspace.get("owner_name", "").lower()
+        active_hours = workspace.get("active_hours", 0.0)
+        user_active_hours[owner_name] = max(
+            user_active_hours.get(owner_name, 0.0), active_hours
+        )
+    return user_active_hours
+
+
+def _get_team_name(
+    owner_name: str,
+    key: str,
+    participant_mappings: dict[str, dict[str, Any]],
+    accumulated_usage: dict[str, dict[str, Any]],
+) -> str:
+    """Get team name with fallback to historical or 'Unassigned'."""
+    participant_data = participant_mappings.get(owner_name, {})
+    team_name = participant_data.get("team_name")
+    if not team_name and key in accumulated_usage:
+        team_name = accumulated_usage[key].get("team_name", "Unassigned")
+    return team_name or "Unassigned"
+
+
+def _update_existing_accumulated_record(
+    record: dict[str, Any],
+    active_delta: float,
+    workspace_hours_delta: float,
+    team_name: str,
+    workspace_ids: list[str],
+    now: str,
+) -> None:
+    """Update an existing accumulated usage record with new deltas."""
+    record["total_active_hours"] += active_delta
+    record.setdefault("total_workspace_hours", 0.0)
+    record["total_workspace_hours"] += workspace_hours_delta
+    record["last_updated"] = now
+    record["team_name"] = team_name
+    existing_ws_ids = set(record.get("workspace_ids", []))
+    existing_ws_ids.update(workspace_ids)
+    record["workspace_ids"] = list(existing_ws_ids)
+
+
 def calculate_accumulated_usage(
     current_workspaces: list[dict[str, Any]],
     historical_accumulated: dict[str, dict[str, Any]],
     historical_workspace_snapshots: dict[str, dict[str, Any]],
     participant_mappings: dict[str, dict[str, Any]],
 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
-    """Calculate accumulated active hours, preserving history.
+    """Calculate accumulated active hours and workspace hours, preserving history.
 
-    Preserves history even for deleted workspaces. Tracks active hours (from
-    Insights API) which represent time with active app connections.
+    Preserves history even for deleted workspaces. Tracks:
+    - active hours (from Insights API) which represent time with active app connections
+    - workspace hours (from build connection times) which represent total usage time
 
     Parameters
     ----------
     current_workspaces : list[dict[str, Any]]
-        List of current workspace objects with active_hours (from Insights API)
+        List of current workspace objects with active_hours and total_usage_hours
     historical_accumulated : dict[str, dict[str, Any]]
         Historical accumulated usage from previous snapshot
     historical_workspace_snapshots : dict[str, dict[str, Any]]
@@ -503,46 +588,34 @@ def calculate_accumulated_usage(
         (accumulated_usage, workspace_usage_snapshot)
     """
     console.print(
-        "[cyan]Calculating accumulated active hours with historical preservation...[/cyan]"
+        "[cyan]Calculating accumulated usage hours with historical preservation...[/cyan]"
     )
 
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-    # Start with historical accumulated usage (preserves deleted workspaces)
     accumulated_usage = {k: v.copy() for k, v in historical_accumulated.items()}
-
-    # Build new workspace snapshot
-    workspace_usage_snapshot = {}
-
-    # Track per-user active hours (Insights API returns per-user, not per-workspace)
-    user_active_hours: dict[str, float] = {}
-    for workspace in current_workspaces:
-        owner_name = workspace.get("owner_name", "").lower()
-        active_hours = workspace.get("active_hours", 0.0)
-        # Take max since active_hours is per-user (same across all their workspaces)
-        user_active_hours[owner_name] = max(
-            user_active_hours.get(owner_name, 0.0), active_hours
-        )
+    workspace_usage_snapshot: dict[str, dict[str, Any]] = {}
+    user_active_hours = _build_user_active_hours(current_workspaces)
 
     # Build workspace snapshot and track user-template combinations
-    user_template_workspaces = {}  # Track workspaces per user-template
+    user_template_workspaces: dict[str, dict[str, Any]] = {}
     for workspace in current_workspaces:
         workspace_id = workspace.get("id")
         owner_name = workspace.get("owner_name", "").lower()
         template_name = workspace.get("template_name", "")
-        current_active = user_active_hours.get(owner_name, 0.0)
 
         if not workspace_id or not owner_name or not template_name:
             continue
 
-        # Update workspace snapshot for next collection
+        current_active = user_active_hours.get(owner_name, 0.0)
+        current_workspace_hours = workspace.get("total_usage_hours", 0.0)
+
         workspace_usage_snapshot[workspace_id] = {
             "active_hours": current_active,
+            "workspace_hours": current_workspace_hours,
             "owner_name": owner_name,
             "template_name": template_name,
         }
 
-        # Track workspaces per user-template for delta calculation
         key = f"{owner_name}_{template_name}"
         if key not in user_template_workspaces:
             user_template_workspaces[key] = {
@@ -550,73 +623,172 @@ def calculate_accumulated_usage(
                 "template_name": template_name,
                 "current_active": current_active,
                 "workspace_ids": [],
+                "workspace_hours_map": {},
             }
         user_template_workspaces[key]["workspace_ids"].append(workspace_id)
+        user_template_workspaces[key]["workspace_hours_map"][workspace_id] = (
+            current_workspace_hours
+        )
 
-    # Now calculate deltas per user-template combination (not per workspace)
+    # Calculate deltas per user-template combination
     for key, data in user_template_workspaces.items():
-        owner_name = data["owner_name"]
-        template_name = data["template_name"]
-        current_active = data["current_active"]
         workspace_ids = data["workspace_ids"]
+        workspace_hours_map = data["workspace_hours_map"]
 
-        # Get previous active hours for this user from any of their workspaces
-        # (they all have the same per-user value)
-        previous_active = 0.0
-        for ws_id in workspace_ids:
-            if ws_id in historical_workspace_snapshots:
-                previous_active = historical_workspace_snapshots[ws_id].get(
-                    "active_hours", 0.0
-                )
-                break  # All workspaces have same per-user value
+        # Get previous active hours (all workspaces have same per-user value)
+        previous_active = next(
+            (
+                historical_workspace_snapshots[ws_id].get("active_hours", 0.0)
+                for ws_id in workspace_ids
+                if ws_id in historical_workspace_snapshots
+            ),
+            0.0,
+        )
 
-        # Calculate delta (new active hours since last snapshot)
-        delta = max(0.0, current_active - previous_active)
+        active_delta = max(0.0, data["current_active"] - previous_active)
+        workspace_hours_delta = sum(
+            max(
+                0.0,
+                workspace_hours_map.get(ws_id, 0.0)
+                - historical_workspace_snapshots.get(ws_id, {}).get(
+                    "workspace_hours", 0.0
+                ),
+            )
+            for ws_id in workspace_ids
+        )
 
-        # Get team name (current mapping takes precedence, then historical)
-        participant_data = participant_mappings.get(owner_name, {})
-        team_name = participant_data.get("team_name")
-        if not team_name and key in accumulated_usage:
-            # Preserve historical team assignment
-            team_name = accumulated_usage[key].get("team_name", "Unassigned")
-        if not team_name:
-            team_name = "Unassigned"
+        team_name = _get_team_name(
+            data["owner_name"], key, participant_mappings, accumulated_usage
+        )
 
-        # Update accumulated usage (once per user-template combination)
         if key in accumulated_usage:
-            # Existing record: add delta to accumulated total
-            accumulated_usage[key]["total_active_hours"] += delta
-            accumulated_usage[key]["last_updated"] = now
-            # Update team name (in case it changed)
-            accumulated_usage[key]["team_name"] = team_name
-            # Add new workspace IDs to the list
-            existing_ws_ids = set(accumulated_usage[key].get("workspace_ids", []))
-            for ws_id in workspace_ids:
-                existing_ws_ids.add(ws_id)
-            accumulated_usage[key]["workspace_ids"] = list(existing_ws_ids)
+            _update_existing_accumulated_record(
+                accumulated_usage[key],
+                active_delta,
+                workspace_hours_delta,
+                team_name,
+                workspace_ids,
+                now,
+            )
         else:
-            # New record: start accumulating
             accumulated_usage[key] = {
-                "owner_name": owner_name,
-                "template_name": template_name,
+                "owner_name": data["owner_name"],
+                "template_name": data["template_name"],
                 "team_name": team_name,
-                "total_active_hours": current_active,
+                "total_active_hours": data["current_active"],
+                "total_workspace_hours": sum(workspace_hours_map.values()),
                 "workspace_ids": workspace_ids,
                 "last_updated": now,
                 "first_seen": now,
             }
 
     console.print(
-        f"[green]✓[/green] Calculated accumulated active hours for {len(accumulated_usage)} user-template combinations"
+        f"[green]✓[/green] Calculated accumulated usage hours for "
+        f"{len(accumulated_usage)} user-template combinations"
     )
     console.print(
         f"  [dim]Current workspace snapshots:[/dim] {len(workspace_usage_snapshot)}"
     )
     console.print(
-        f"  [dim]Historical records preserved:[/dim] {len(accumulated_usage) - len(workspace_usage_snapshot)}"
+        f"  [dim]Historical records preserved:[/dim] "
+        f"{len(accumulated_usage) - len(workspace_usage_snapshot)}"
     )
 
     return accumulated_usage, workspace_usage_snapshot
+
+
+def calculate_daily_engagement(
+    current_workspaces: list[dict[str, Any]],
+    historical_daily_engagement: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Calculate daily engagement data, preserving history from deleted workspaces.
+
+    Tracks unique users and workspaces that had activity on each date.
+
+    Parameters
+    ----------
+    current_workspaces : list[dict[str, Any]]
+        List of current workspace objects with all_builds data
+    historical_daily_engagement : dict[str, dict[str, Any]]
+        Historical daily engagement from previous snapshot
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Mapping of date (YYYY-MM-DD) -> {
+            'unique_users': list of usernames,
+            'active_workspaces': list of workspace ids
+        }
+    """
+    console.print(
+        "[cyan]Calculating daily engagement with historical preservation...[/cyan]"
+    )
+
+    # Start with historical data (preserves engagement from deleted workspaces)
+    daily_engagement: dict[str, dict[str, set]] = {}
+    for date_str, data in historical_daily_engagement.items():
+        daily_engagement[date_str] = {
+            "unique_users": set(data.get("unique_users", [])),
+            "active_workspaces": set(data.get("active_workspaces", [])),
+        }
+
+    # Process current workspaces and their builds
+    for workspace in current_workspaces:
+        workspace_id = workspace.get("id")
+        owner_name = workspace.get("owner_name", "").lower()
+        all_builds = workspace.get("all_builds", [])
+
+        for build in all_builds:
+            try:
+                # Track workspace starts as engagement
+                if build.get("transition") == "start" and build.get("created_at"):
+                    date_str = build["created_at"].split("T")[0]
+                    if date_str not in daily_engagement:
+                        daily_engagement[date_str] = {
+                            "unique_users": set(),
+                            "active_workspaces": set(),
+                        }
+                    daily_engagement[date_str]["unique_users"].add(owner_name)
+                    daily_engagement[date_str]["active_workspaces"].add(workspace_id)
+
+                # Track agent connections
+                resources = build.get("resources", [])
+                for resource in resources:
+                    agents = resource.get("agents", [])
+                    for agent in agents:
+                        for conn_field in ["first_connected_at", "last_connected_at"]:
+                            conn_time = agent.get(conn_field)
+                            if conn_time:
+                                date_str = conn_time.split("T")[0]
+                                if date_str not in daily_engagement:
+                                    daily_engagement[date_str] = {
+                                        "unique_users": set(),
+                                        "active_workspaces": set(),
+                                    }
+                                daily_engagement[date_str]["unique_users"].add(
+                                    owner_name
+                                )
+                                daily_engagement[date_str]["active_workspaces"].add(
+                                    workspace_id
+                                )
+            except Exception as e:
+                console.print(
+                    f"  [yellow]⚠ Warning: Error processing build for workspace {workspace_id}:[/yellow] {e}"
+                )
+
+    # Convert sets to lists for JSON serialization
+    result = {}
+    for date_str, data in daily_engagement.items():
+        result[date_str] = {
+            "unique_users": list(data["unique_users"]),
+            "active_workspaces": list(data["active_workspaces"]),
+        }
+
+    console.print(
+        f"[green]✓[/green] Calculated daily engagement for {len(result)} days"
+    )
+
+    return result
 
 
 def fetch_workspaces(
@@ -763,6 +935,7 @@ def create_snapshot(
     templates: list[dict[str, Any]],
     accumulated_usage: dict[str, dict[str, Any]],
     workspace_usage_snapshot: dict[str, dict[str, Any]],
+    accumulated_daily_engagement: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
     """Create a snapshot object with timestamp and accumulated usage data."""
     timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -773,11 +946,15 @@ def create_snapshot(
         "templates": templates,
         "accumulated_usage": accumulated_usage,
         "workspace_usage_snapshot": workspace_usage_snapshot,
+        "accumulated_daily_engagement": accumulated_daily_engagement,
     }
 
     console.print(f"[green]✓[/green] Created snapshot at {timestamp}")
     console.print(f"  [dim]Accumulated usage records:[/dim] {len(accumulated_usage)}")
     console.print(f"  [dim]Workspace snapshots:[/dim] {len(workspace_usage_snapshot)}")
+    console.print(
+        f"  [dim]Daily engagement records:[/dim] {len(accumulated_daily_engagement)}"
+    )
     return snapshot
 
 
@@ -863,6 +1040,7 @@ def main() -> None:
     # Fetch historical accumulated usage data
     historical_accumulated = get_historical_accumulated_usage(bucket_name)
     historical_workspace_snapshots = get_historical_workspace_snapshots(bucket_name)
+    historical_daily_engagement = get_historical_daily_engagement(bucket_name)
 
     # Fetch data (with filtering and build enrichment)
     workspaces = fetch_workspaces(participant_mappings, api_url, session_token)
@@ -876,9 +1054,19 @@ def main() -> None:
         participant_mappings,
     )
 
+    # Calculate daily engagement with historical preservation
+    accumulated_daily_engagement = calculate_daily_engagement(
+        workspaces,
+        historical_daily_engagement,
+    )
+
     # Create snapshot with accumulated usage data
     snapshot = create_snapshot(
-        workspaces, templates, accumulated_usage, workspace_usage_snapshot
+        workspaces,
+        templates,
+        accumulated_usage,
+        workspace_usage_snapshot,
+        accumulated_daily_engagement,
     )
 
     # Save local copy if requested

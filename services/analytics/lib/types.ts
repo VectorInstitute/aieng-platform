@@ -79,6 +79,7 @@ export interface AccumulatedUsage {
   template_name: string;
   team_name: string;
   total_active_hours: number;  // Accumulated active hours including deleted workspaces
+  total_workspace_hours: number;  // Accumulated workspace hours including deleted workspaces
   workspace_ids: string[];  // All workspace IDs ever created for this user-template
   last_updated: string;  // ISO 8601
   first_seen: string;  // ISO 8601
@@ -86,8 +87,14 @@ export interface AccumulatedUsage {
 
 export interface WorkspaceUsageSnapshot {
   active_hours: number;  // Active hours from Insights API
+  workspace_hours: number;  // Workspace hours from build connection times
   owner_name: string;
   template_name: string;
+}
+
+export interface AccumulatedDailyEngagement {
+  unique_users: string[];  // List of usernames who were active
+  active_workspaces: string[];  // List of workspace IDs that were active
 }
 
 export interface CoderSnapshot {
@@ -96,6 +103,7 @@ export interface CoderSnapshot {
   templates: CoderTemplate[];
   accumulated_usage?: Record<string, AccumulatedUsage>;  // key: "user_template"
   workspace_usage_snapshot?: Record<string, WorkspaceUsageSnapshot>;  // key: workspace_id
+  accumulated_daily_engagement?: Record<string, AccumulatedDailyEngagement>;  // key: date (YYYY-MM-DD)
 }
 
 // ===== Firestore Types =====
