@@ -6,7 +6,7 @@ from typing import Any
 from unittest.mock import Mock
 
 import pytest
-from google.cloud import firestore
+from google.cloud.firestore import Client as FirestoreClient
 from rich.console import Console
 
 from aieng_platform_onboard.utils import (
@@ -438,9 +438,9 @@ class TestInitializeFirestoreWithToken:
         )
 
         # Mock Firestore client
-        mock_client = Mock(spec=firestore.Client)
+        mock_client = Mock(spec=FirestoreClient)
         monkeypatch.setattr(
-            "google.cloud.firestore.Client", lambda **kwargs: mock_client
+            "aieng_platform_onboard.utils.FirestoreClient", lambda **kwargs: mock_client
         )
 
         # Mock oauth2_credentials.Credentials
@@ -494,9 +494,9 @@ class TestInitializeFirestoreAdmin:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test successful admin Firestore initialization."""
-        mock_client = Mock(spec=firestore.Client)
+        mock_client = Mock(spec=FirestoreClient)
         monkeypatch.setattr(
-            "google.cloud.firestore.Client", lambda **kwargs: mock_client
+            "aieng_platform_onboard.utils.FirestoreClient", lambda **kwargs: mock_client
         )
 
         client = initialize_firestore_admin()
@@ -511,7 +511,9 @@ class TestInitializeFirestoreAdmin:
         def mock_client_error(**kwargs: Any) -> None:
             raise Exception("Connection failed")
 
-        monkeypatch.setattr("google.cloud.firestore.Client", mock_client_error)
+        monkeypatch.setattr(
+            "aieng_platform_onboard.utils.FirestoreClient", mock_client_error
+        )
 
         with pytest.raises(
             Exception, match="Failed to initialize Firestore admin client"

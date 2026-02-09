@@ -5,7 +5,7 @@ from typing import Any
 from unittest.mock import Mock
 
 import pytest
-from google.cloud import firestore
+from google.cloud.firestore import Client as FirestoreClient
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ def mock_firestore_client() -> Mock:
     Mock
         Mock Firestore client instance.
     """
-    return Mock(spec=firestore.Client)
+    return Mock(spec=FirestoreClient)
 
 
 @pytest.fixture

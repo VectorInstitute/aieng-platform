@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import cast
 
 import pandas as pd
-from google.cloud import firestore
+from google.cloud.firestore import Client as FirestoreClient
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
@@ -43,7 +43,7 @@ def validate_csv_data(df: pd.DataFrame) -> tuple[bool, list[str]]:
 
     # Check required columns
     required_columns = {"github_handle", "team_name"}
-    optional_columns = {"email", "first_name", "last_name"}
+    optional_columns = {"email", "first_name", "last_name", "bootcamp_name"}
     all_columns = required_columns | optional_columns
 
     missing_columns = required_columns - set(df.columns)
@@ -130,6 +130,11 @@ def group_participants_by_team(df: pd.DataFrame) -> dict[str, list[dict]]:
                 if "last_name" in row and pd.notna(row["last_name"])
                 else ""
             ),
+            "bootcamp_name": (
+                str(row["bootcamp_name"]).strip()
+                if "bootcamp_name" in row and pd.notna(row["bootcamp_name"])
+                else ""
+            ),
         }
         teams[team_name].append(participant)
 
@@ -137,14 +142,14 @@ def group_participants_by_team(df: pd.DataFrame) -> dict[str, list[dict]]:
 
 
 def create_or_update_teams(
-    db: firestore.Client, teams_data: dict[str, list[dict]], dry_run: bool = False
+    db: FirestoreClient, teams_data: dict[str, list[dict]], dry_run: bool = False
 ) -> dict[str, str]:
     """
     Create or update team documents in Firestore.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
     teams_data : dict[str, list[dict]]
         Dictionary mapping team names to participant lists.
@@ -215,14 +220,14 @@ def create_or_update_teams(
 
 
 def create_or_update_participants(  # noqa: PLR0912, PLR0915
-    db: firestore.Client, teams_data: dict[str, list[dict]], dry_run: bool = False
+    db: FirestoreClient, teams_data: dict[str, list[dict]], dry_run: bool = False
 ) -> tuple[int, int]:
     """
     Create or update participant documents in Firestore.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
     teams_data : dict[str, list[dict]]
         Dictionary mapping team names to participant lists.
@@ -275,6 +280,7 @@ def create_or_update_participants(  # noqa: PLR0912, PLR0915
                 email = participant["email"]
                 first_name = participant.get("first_name", "")
                 last_name = participant.get("last_name", "")
+                bootcamp_name = participant.get("bootcamp_name", "")
 
                 # Check if participant already exists
                 existing_participant = get_participant_by_handle(db, github_handle)
@@ -298,6 +304,8 @@ def create_or_update_participants(  # noqa: PLR0912, PLR0915
                             update_data["first_name"] = first_name
                         if last_name:
                             update_data["last_name"] = last_name
+                        if bootcamp_name:
+                            update_data["bootcamp_name"] = bootcamp_name
                         participant_ref.update(update_data)
                         console.print(f"  [green]✓[/green] Updated '{github_handle}'")
                 else:
@@ -313,6 +321,8 @@ def create_or_update_participants(  # noqa: PLR0912, PLR0915
                         participant_doc["first_name"] = first_name
                     if last_name:
                         participant_doc["last_name"] = last_name
+                    if bootcamp_name:
+                        participant_doc["bootcamp_name"] = bootcamp_name
 
                     if dry_run:
                         console.print(

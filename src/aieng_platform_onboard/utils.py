@@ -10,7 +10,7 @@ from typing import Any
 import google.auth
 import requests
 from google.auth import jwt as google_jwt
-from google.cloud import firestore  # type: ignore[attr-defined]
+from google.cloud.firestore import Client as FirestoreClient
 from google.oauth2 import credentials as oauth2_credentials
 from rich.console import Console
 
@@ -232,7 +232,7 @@ def initialize_firestore_with_token(
     project_id: str,
     database_id: str,
     firebase_api_key: str | None = None,
-) -> firestore.Client:
+) -> FirestoreClient:
     """
     Initialize Firestore client with Firebase authentication token.
 
@@ -253,7 +253,7 @@ def initialize_firestore_with_token(
 
     Returns
     -------
-    firestore.Client
+    FirestoreClient
         Authenticated Firestore client with security rules enforced.
 
     Raises
@@ -286,7 +286,7 @@ def initialize_firestore_with_token(
         creds = oauth2_credentials.Credentials(token=id_token)  # type: ignore[no-untyped-call]
 
         # Initialize Firestore client with the credentials
-        return firestore.Client(
+        return FirestoreClient(
             project=project_id, database=database_id, credentials=creds
         )
 
@@ -295,14 +295,14 @@ def initialize_firestore_with_token(
 
 
 def get_participant_data(
-    db: firestore.Client, github_handle: str
+    db: FirestoreClient, github_handle: str
 ) -> dict[str, Any] | None:
     """
     Retrieve participant document from Firestore.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
     github_handle : str
         GitHub handle of the participant.
@@ -328,13 +328,13 @@ def get_participant_data(
         return None
 
 
-def get_team_data(db: firestore.Client, team_name: str) -> dict[str, Any] | None:
+def get_team_data(db: FirestoreClient, team_name: str) -> dict[str, Any] | None:
     """
     Retrieve team document from Firestore.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
     team_name : str
         Name of the team.
@@ -358,13 +358,13 @@ def get_team_data(db: firestore.Client, team_name: str) -> dict[str, Any] | None
         return None
 
 
-def get_global_keys(db: firestore.Client) -> dict[str, Any] | None:
+def get_global_keys(db: FirestoreClient) -> dict[str, Any] | None:
     """
     Retrieve global keys from Firestore.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
 
     Returns
@@ -553,14 +553,14 @@ def create_env_file(
 
 
 def check_onboarded_status(
-    db: firestore.Client, github_handle: str
+    db: FirestoreClient, github_handle: str
 ) -> tuple[bool, bool]:
     """
     Check if participant is already onboarded.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
     github_handle : str
         GitHub handle of the participant.
@@ -640,14 +640,14 @@ def validate_env_file(env_path: Path) -> tuple[bool, list[str]]:
 
 
 def update_onboarded_status(
-    db: firestore.Client, github_handle: str
+    db: FirestoreClient, github_handle: str
 ) -> tuple[bool, str | None]:
     """
     Update participant's onboarded status in Firestore.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
     github_handle : str
         GitHub handle of the participant.
@@ -676,7 +676,7 @@ def update_onboarded_status(
 def initialize_firestore_admin(
     project_id: str = FIRESTORE_PROJECT_ID,
     database_id: str = FIRESTORE_DATABASE_ID,
-) -> firestore.Client:
+) -> FirestoreClient:
     """
     Initialize Firestore client with admin (service account) credentials.
 
@@ -693,7 +693,7 @@ def initialize_firestore_admin(
 
     Returns
     -------
-    firestore.Client
+    FirestoreClient
         Authenticated Firestore client with admin access.
 
     Raises
@@ -702,7 +702,7 @@ def initialize_firestore_admin(
         If initialization fails or credentials are not available.
     """
     try:
-        return firestore.Client(project=project_id, database=database_id)
+        return FirestoreClient(project=project_id, database=database_id)
     except Exception as e:
         raise Exception(
             f"Failed to initialize Firestore admin client: {e}\n"
@@ -710,7 +710,7 @@ def initialize_firestore_admin(
         ) from e
 
 
-def get_all_participants_with_status(db: firestore.Client) -> list[dict[str, Any]]:
+def get_all_participants_with_status(db: FirestoreClient) -> list[dict[str, Any]]:
     """
     Retrieve all participants with their onboarding status.
 

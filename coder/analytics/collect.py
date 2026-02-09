@@ -26,7 +26,9 @@ console = Console()
 
 
 try:
-    from google.cloud import firestore, storage
+    from google.cloud.firestore import Client as FirestoreClient
+    from google.cloud.storage import Bucket
+    from google.cloud.storage import Client as StorageClient
 except ImportError:
     console.print(
         "[red]Error: google-cloud-storage or google-cloud-firestore not installed.[/red]"
@@ -248,7 +250,7 @@ def get_latest_snapshot(bucket_name: str) -> dict[str, Any] | None:
         The previous snapshot data, or None if not found
     """
     try:
-        storage_client = storage.Client()
+        storage_client = StorageClient()
         bucket = storage_client.bucket(bucket_name)
 
         # List all snapshots and get the most recent one
@@ -453,7 +455,7 @@ def get_participant_mappings() -> dict[str, dict[str, Any]]:
     project_id = "coderd"
     database_id = "onboarding"
 
-    db = firestore.Client(project=project_id, database=database_id)
+    db = FirestoreClient(project=project_id, database=database_id)
 
     mappings = {}
     participants = db.collection("participants").stream()
@@ -958,9 +960,9 @@ def create_snapshot(
     return snapshot
 
 
-def ensure_bucket_exists(bucket_name: str) -> storage.Bucket:
+def ensure_bucket_exists(bucket_name: str) -> Bucket:
     """Ensure the GCS bucket exists, create if it doesn't."""
-    client = storage.Client()
+    client = StorageClient()
 
     try:
         bucket = client.get_bucket(bucket_name)

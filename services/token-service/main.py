@@ -14,7 +14,7 @@ import firebase_admin
 import jwt
 from firebase_admin import auth, credentials
 from flask import Flask, request
-from google.cloud import firestore
+from google.cloud.firestore import Client as FirestoreClient
 
 
 # Initialize Flask app
@@ -37,7 +37,7 @@ except Exception as e:
     raise
 
 # Initialize Firestore client
-db = firestore.Client(
+db = FirestoreClient(
     project=os.environ.get("GCP_PROJECT", "coderd"),
     database=os.environ.get("FIRESTORE_DATABASE", "onboarding"),
 )

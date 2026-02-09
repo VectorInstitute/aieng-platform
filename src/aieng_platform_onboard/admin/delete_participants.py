@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pandas as pd
-from google.cloud import firestore
+from google.cloud.firestore import Client as FirestoreClient
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
@@ -65,7 +65,7 @@ def validate_csv_data(df: pd.DataFrame) -> tuple[bool, list[str]]:
 
 
 def delete_participant_from_team(
-    db: firestore.Client,
+    db: FirestoreClient,
     github_handle: str,
     team_name: str,
     dry_run: bool = False,
@@ -75,7 +75,7 @@ def delete_participant_from_team(
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
     github_handle : str
         Normalized GitHub handle to remove.
@@ -131,14 +131,14 @@ def delete_participant_from_team(
 
 
 def delete_empty_team(
-    db: firestore.Client, team_name: str, dry_run: bool = False
+    db: FirestoreClient, team_name: str, dry_run: bool = False
 ) -> bool:
     """
     Delete a team that has no participants.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
     team_name : str
         Name of the team to delete.
@@ -170,7 +170,7 @@ def delete_empty_team(
 
 
 def delete_participants(
-    db: firestore.Client,
+    db: FirestoreClient,
     github_handles: list[str],
     delete_empty_teams: bool = True,
     dry_run: bool = False,
@@ -180,7 +180,7 @@ def delete_participants(
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
     github_handles : list[str]
         List of normalized GitHub handles to delete.

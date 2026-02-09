@@ -89,9 +89,9 @@ user1,team-b"""
 
     def test_validate_csv_data_optional_fields(self) -> None:
         """Test validation with optional fields."""
-        csv_data = """github_handle,team_name,email,first_name,last_name
-user1,team-a,user1@example.com,John,Doe
-user2,team-b,,,"""
+        csv_data = """github_handle,team_name,email,first_name,last_name,bootcamp_name
+user1,team-a,user1@example.com,John,Doe,agent-bootcamp
+user2,team-b,,,,"""
         df = pd.read_csv(StringIO(csv_data))
 
         is_valid, errors = validate_csv_data(df)
@@ -110,16 +110,28 @@ user1,team-a,extra_value"""
         assert is_valid is True
         assert len(errors) == 0
 
+    def test_validate_csv_data_with_bootcamp_name(self) -> None:
+        """Test validation with bootcamp_name field."""
+        csv_data = """github_handle,team_name,bootcamp_name
+user1,team-a,agent-bootcamp
+user2,team-b,data-bootcamp"""
+        df = pd.read_csv(StringIO(csv_data))
+
+        is_valid, errors = validate_csv_data(df)
+
+        assert is_valid is True
+        assert len(errors) == 0
+
 
 class TestGroupParticipantsByTeam:
     """Tests for group_participants_by_team function."""
 
     def test_group_participants_by_team(self) -> None:
         """Test grouping participants by team."""
-        csv_data = """github_handle,team_name,email,first_name,last_name
-user1,team-a,user1@example.com,John,Doe
-user2,team-a,user2@example.com,Jane,Smith
-user3,team-b,user3@example.com,Bob,Johnson"""
+        csv_data = """github_handle,team_name,email,first_name,last_name,bootcamp_name
+user1,team-a,user1@example.com,John,Doe,agent-bootcamp
+user2,team-a,user2@example.com,Jane,Smith,agent-bootcamp
+user3,team-b,user3@example.com,Bob,Johnson,data-bootcamp"""
         df = pd.read_csv(StringIO(csv_data))
 
         teams_data = group_participants_by_team(df)
@@ -133,6 +145,8 @@ user3,team-b,user3@example.com,Bob,Johnson"""
         assert teams_data["team-a"][0]["email"] == "user1@example.com"
         assert teams_data["team-a"][0]["first_name"] == "John"
         assert teams_data["team-a"][0]["last_name"] == "Doe"
+        assert teams_data["team-a"][0]["bootcamp_name"] == "agent-bootcamp"
+        assert teams_data["team-b"][0]["bootcamp_name"] == "data-bootcamp"
 
     def test_group_participants_normalizes_handles(self) -> None:
         """Test that GitHub handles are normalized to lowercase."""
@@ -145,6 +159,32 @@ USER2,team-a"""
 
         assert teams_data["team-a"][0]["github_handle"] == "user1"
         assert teams_data["team-a"][1]["github_handle"] == "user2"
+
+    def test_group_participants_with_missing_bootcamp_name(self) -> None:
+        """Test grouping participants when bootcamp_name is missing."""
+        csv_data = """github_handle,team_name,email
+user1,team-a,user1@example.com
+user2,team-a,user2@example.com"""
+        df = pd.read_csv(StringIO(csv_data))
+
+        teams_data = group_participants_by_team(df)
+
+        # When bootcamp_name column is missing, it should default to empty string
+        assert teams_data["team-a"][0]["bootcamp_name"] == ""
+        assert teams_data["team-a"][1]["bootcamp_name"] == ""
+
+    def test_group_participants_with_empty_bootcamp_name(self) -> None:
+        """Test grouping participants when bootcamp_name is empty."""
+        csv_data = """github_handle,team_name,bootcamp_name
+user1,team-a,
+user2,team-a,agent-bootcamp"""
+        df = pd.read_csv(StringIO(csv_data))
+
+        teams_data = group_participants_by_team(df)
+
+        # Empty values should become empty strings
+        assert teams_data["team-a"][0]["bootcamp_name"] == ""
+        assert teams_data["team-a"][1]["bootcamp_name"] == "agent-bootcamp"
 
 
 class TestCreateOrUpdateTeams:
@@ -244,6 +284,7 @@ class TestCreateOrUpdateParticipants:
                     "email": "user1@example.com",
                     "first_name": "John",
                     "last_name": "Doe",
+                    "bootcamp_name": "agent-bootcamp",
                 },
             ],
         }
@@ -271,13 +312,20 @@ class TestCreateOrUpdateParticipants:
 
             assert success_count == 1
             assert failed_count == 0
-            mock_doc_ref.set.assert_called_once()
+            # Verify set was called and check the data includes bootcamp_name
+            assert mock_doc_ref.set.call_count == 1
+            call_args = mock_doc_ref.set.call_args[0][0]
+            assert call_args["bootcamp_name"] == "agent-bootcamp"
 
     def test_update_existing_participants(self, mock_firestore_client: Mock) -> None:
         """Test updating existing participants."""
         teams_data = {
             "team-a": [
-                {"github_handle": "user1", "email": "user1@example.com"},
+                {
+                    "github_handle": "user1",
+                    "email": "user1@example.com",
+                    "bootcamp_name": "agent-bootcamp",
+                },
             ],
         }
 
@@ -309,7 +357,10 @@ class TestCreateOrUpdateParticipants:
 
             assert success_count == 1
             assert failed_count == 0
-            mock_doc_ref.update.assert_called_once()
+            # Verify update was called and check the data includes bootcamp_name
+            assert mock_doc_ref.update.call_count == 1
+            call_args = mock_doc_ref.update.call_args[0][0]
+            assert call_args["bootcamp_name"] == "agent-bootcamp"
 
     def test_skip_participants_when_team_not_found(
         self, mock_firestore_client: Mock
@@ -407,7 +458,7 @@ class TestSetupParticipantsFromCSV:
         """Test successful participant setup."""
         csv_file = tmp_path / "participants.csv"
         csv_file.write_text(
-            "github_handle,team_name,email\nuser1,team-a,user1@example.com"
+            "github_handle,team_name,email,bootcamp_name\nuser1,team-a,user1@example.com,agent-bootcamp"
         )
 
         # Mock team existence check

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from google.cloud import firestore  # type: ignore[attr-defined]
+from google.cloud.firestore import Client as FirestoreClient
 from google.cloud.firestore_v1.base_query import FieldFilter
 from rich.console import Console
 
@@ -55,13 +55,13 @@ def normalize_github_handle(github_handle: str) -> str:
     return github_handle.lower()
 
 
-def get_firestore_client() -> firestore.Client:
+def get_firestore_client() -> FirestoreClient:
     """
     Initialize and return a Firestore client.
 
     Returns
     -------
-    firestore.Client
+    FirestoreClient
         Initialized Firestore client.
 
     Raises
@@ -70,7 +70,7 @@ def get_firestore_client() -> firestore.Client:
         If Firestore client initialization fails.
     """
     try:
-        return firestore.Client(
+        return FirestoreClient(
             project=FIRESTORE_PROJECT_ID,
             database=FIRESTORE_DATABASE_ID,
         )
@@ -142,13 +142,13 @@ def validate_email(email: str) -> bool:
     return "@" in email and "." in email.split("@")[1]
 
 
-def get_all_teams(db: firestore.Client) -> list[dict[str, Any]]:
+def get_all_teams(db: FirestoreClient) -> list[dict[str, Any]]:
     """
     Retrieve all teams from Firestore.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
 
     Returns
@@ -166,13 +166,13 @@ def get_all_teams(db: firestore.Client) -> list[dict[str, Any]]:
     return teams
 
 
-def get_team_by_name(db: firestore.Client, team_name: str) -> dict[str, Any] | None:
+def get_team_by_name(db: FirestoreClient, team_name: str) -> dict[str, Any] | None:
     """
     Retrieve a specific team by name.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
     team_name : str
         Name of the team to retrieve.
@@ -195,13 +195,13 @@ def get_team_by_name(db: firestore.Client, team_name: str) -> dict[str, Any] | N
     return team_data
 
 
-def get_all_participants(db: firestore.Client) -> list[dict[str, Any]]:
+def get_all_participants(db: FirestoreClient) -> list[dict[str, Any]]:
     """
     Retrieve all participants from Firestore.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
 
     Returns
@@ -220,14 +220,14 @@ def get_all_participants(db: firestore.Client) -> list[dict[str, Any]]:
 
 
 def get_participant_by_handle(
-    db: firestore.Client, github_handle: str
+    db: FirestoreClient, github_handle: str
 ) -> dict[str, Any] | None:
     """
     Retrieve a specific participant by GitHub handle.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
     github_handle : str
         GitHub handle of the participant.
