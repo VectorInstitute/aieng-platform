@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import cast
 
 import pandas as pd
-from google.cloud import firestore
+from google.cloud.firestore import Client as FirestoreClient
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
@@ -142,14 +142,14 @@ def group_participants_by_team(df: pd.DataFrame) -> dict[str, list[dict]]:
 
 
 def create_or_update_teams(
-    db: firestore.Client, teams_data: dict[str, list[dict]], dry_run: bool = False
+    db: FirestoreClient, teams_data: dict[str, list[dict]], dry_run: bool = False
 ) -> dict[str, str]:
     """
     Create or update team documents in Firestore.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
     teams_data : dict[str, list[dict]]
         Dictionary mapping team names to participant lists.
@@ -220,14 +220,14 @@ def create_or_update_teams(
 
 
 def create_or_update_participants(  # noqa: PLR0912, PLR0915
-    db: firestore.Client, teams_data: dict[str, list[dict]], dry_run: bool = False
+    db: FirestoreClient, teams_data: dict[str, list[dict]], dry_run: bool = False
 ) -> tuple[int, int]:
     """
     Create or update participant documents in Firestore.
 
     Parameters
     ----------
-    db : firestore.Client
+    db : FirestoreClient
         Firestore client instance.
     teams_data : dict[str, list[dict]]
         Dictionary mapping team names to participant lists.

@@ -70,6 +70,7 @@ docs = [
 default-groups = ["dev"]
 
 [tool.mypy]
+mypy_path = "src"
 follow_imports = "normal"
 ignore_missing_imports = false
 install_types = true
