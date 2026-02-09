@@ -19,6 +19,7 @@ interface ParticipantData {
   onboarded_at?: string | null;
   first_name?: string;
   last_name?: string;
+  bootcamp_name?: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
             onboarded_at: data.onboarded_at,
             first_name: data.first_name || '',
             last_name: data.last_name || '',
+            bootcamp_name: data.bootcamp_name || '',
           });
         }
       } else {
@@ -60,6 +62,7 @@ export async function GET(request: NextRequest) {
             onboarded_at: data.onboarded_at,
             first_name: data.first_name || '',
             last_name: data.last_name || '',
+            bootcamp_name: data.bootcamp_name || '',
           });
         }
       }
