@@ -50,9 +50,7 @@ class TestGetFirestoreClient:
 
     def test_get_firestore_client_success(self) -> None:
         """Test successful Firestore client initialization."""
-        with patch(
-            "aieng_platform_onboard.admin.utils.firestore.Client"
-        ) as mock_client:
+        with patch("aieng_platform_onboard.admin.utils.FirestoreClient") as mock_client:
             mock_instance = Mock()
             mock_client.return_value = mock_instance
 
@@ -66,9 +64,7 @@ class TestGetFirestoreClient:
 
     def test_get_firestore_client_failure(self) -> None:
         """Test Firestore client initialization failure."""
-        with patch(
-            "aieng_platform_onboard.admin.utils.firestore.Client"
-        ) as mock_client:
+        with patch("aieng_platform_onboard.admin.utils.FirestoreClient") as mock_client:
             mock_client.side_effect = Exception("Connection failed")
 
             with pytest.raises(Exception) as exc_info:

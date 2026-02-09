@@ -11,6 +11,7 @@ interface Participant {
   first_name?: string;
   last_name?: string;
   github_status?: 'member' | 'pending' | 'not_invited';
+  bootcamp_name?: string;
 }
 
 interface Summary {
@@ -36,6 +37,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'onboarded' | 'not_onboarded'>('all');
   const [roleFilter, setRoleFilter] = useState<'participants' | 'facilitators'>('participants');
+  const [bootcampFilter, setBootcampFilter] = useState<string>('all');
 
   const handleLogout = async () => {
     try {
@@ -143,11 +145,24 @@ export default function DashboardContent({ user }: DashboardContentProps) {
 
   const { participants, summary } = data;
 
-  // Filter participants based on status
+  // Get unique bootcamp names for filter options
+  const bootcampNames = Array.from(
+    new Set(participants.map((p) => p.bootcamp_name || 'Unknown').filter(Boolean))
+  ).sort();
+
+  // Filter participants based on status and bootcamp
   const filteredParticipants = participants.filter((participant) => {
-    if (statusFilter === 'onboarded') return participant.onboarded;
-    if (statusFilter === 'not_onboarded') return !participant.onboarded;
-    return true; // 'all'
+    // Status filter
+    if (statusFilter === 'onboarded' && !participant.onboarded) return false;
+    if (statusFilter === 'not_onboarded' && participant.onboarded) return false;
+
+    // Bootcamp filter
+    if (bootcampFilter !== 'all') {
+      const participantBootcamp = participant.bootcamp_name || 'Unknown';
+      if (participantBootcamp !== bootcampFilter) return false;
+    }
+
+    return true;
   });
 
   // Helper function to render GitHub status badge
@@ -196,7 +211,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
 
   // CSV export function
   const exportToCSV = () => {
-    const headers = ['#', 'Name', 'GitHub Handle', 'GitHub Status', 'Team Name', 'Status', 'Onboarded At'];
+    const headers = ['#', 'Name', 'GitHub Handle', 'GitHub Status', 'Team Name', 'Bootcamp', 'Status', 'Onboarded At'];
     const rows = filteredParticipants.map((participant, index) => {
       const name = participant.first_name && participant.last_name
         ? `${participant.first_name} ${participant.last_name}`
@@ -210,6 +225,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
           ? 'Pending'
           : 'Not Invited'
         : 'Unknown';
+      const bootcamp = participant.bootcamp_name || 'N/A';
 
       return [
         index + 1,
@@ -217,6 +233,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
         participant.github_handle,
         githubStatus,
         participant.team_name,
+        bootcamp,
         status,
         onboardedAt
       ];
@@ -338,8 +355,8 @@ export default function DashboardContent({ user }: DashboardContentProps) {
         </div>
 
         {/* Filter and Export Controls */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6 animate-slide-up" style={{ animationDelay: '150ms' }}>
-          <div className="flex-1">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6 animate-slide-up" style={{ animationDelay: '150ms' }}>
+          <div>
             <label htmlFor="role-filter" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
               Filter by Role
             </label>
@@ -353,7 +370,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
                 id="role-filter"
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value as 'participants' | 'facilitators')}
-                className="w-full sm:w-72 pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold shadow-sm hover:border-vector-magenta dark:hover:border-vector-violet focus:ring-2 focus:ring-vector-magenta focus:border-vector-magenta dark:focus:ring-vector-violet dark:focus:border-vector-violet transition-all duration-200 appearance-none cursor-pointer"
+                className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold shadow-sm hover:border-vector-magenta dark:hover:border-vector-violet focus:ring-2 focus:ring-vector-magenta focus:border-vector-magenta dark:focus:ring-vector-violet dark:focus:border-vector-violet transition-all duration-200 appearance-none cursor-pointer"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
                   backgroundPosition: 'right 0.5rem center',
@@ -367,7 +384,39 @@ export default function DashboardContent({ user }: DashboardContentProps) {
             </div>
           </div>
 
-          <div className="flex-1">
+          <div>
+            <label htmlFor="bootcamp-filter" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+              Filter by Bootcamp
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <select
+                id="bootcamp-filter"
+                value={bootcampFilter}
+                onChange={(e) => setBootcampFilter(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold shadow-sm hover:border-vector-magenta dark:hover:border-vector-violet focus:ring-2 focus:ring-vector-magenta focus:border-vector-magenta dark:focus:ring-vector-violet dark:focus:border-vector-violet transition-all duration-200 appearance-none cursor-pointer"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 0.5rem center',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundSize: '1.5em 1.5em'
+                }}
+              >
+                <option value="all">All Bootcamps</option>
+                {bootcampNames.map((bootcamp) => (
+                  <option key={bootcamp} value={bootcamp}>
+                    {bootcamp}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
             <label htmlFor="status-filter" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
               Filter by Status
             </label>
@@ -381,7 +430,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
                 id="status-filter"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as 'all' | 'onboarded' | 'not_onboarded')}
-                className="w-full sm:w-72 pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold shadow-sm hover:border-vector-magenta dark:hover:border-vector-violet focus:ring-2 focus:ring-vector-magenta focus:border-vector-magenta dark:focus:ring-vector-violet dark:focus:border-vector-violet transition-all duration-200 appearance-none cursor-pointer"
+                className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold shadow-sm hover:border-vector-magenta dark:hover:border-vector-violet focus:ring-2 focus:ring-vector-magenta focus:border-vector-magenta dark:focus:ring-vector-violet dark:focus:border-vector-violet transition-all duration-200 appearance-none cursor-pointer"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
                   backgroundPosition: 'right 0.5rem center',
@@ -399,12 +448,12 @@ export default function DashboardContent({ user }: DashboardContentProps) {
           <div className="flex items-end">
             <button
               onClick={exportToCSV}
-              className="group relative inline-flex items-center px-6 py-3 rounded-xl bg-gradient-to-r from-vector-magenta via-vector-violet to-vector-cobalt hover:from-vector-violet hover:via-vector-cobalt hover:to-vector-turquoise text-white font-bold shadow-lg shadow-vector-magenta/30 hover:shadow-xl hover:shadow-vector-violet/40 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
+              className="group relative inline-flex items-center justify-center w-full px-6 py-3 rounded-xl bg-gradient-to-r from-vector-magenta via-vector-violet to-vector-cobalt hover:from-vector-violet hover:via-vector-cobalt hover:to-vector-turquoise text-white font-bold shadow-lg shadow-vector-magenta/30 hover:shadow-xl hover:shadow-vector-violet/40 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
             >
               <svg className="w-5 h-5 mr-2 transition-transform group-hover:translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
               </svg>
-              <span>Export to CSV</span>
+              <span>Export CSV</span>
               <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-md text-sm font-bold">
                 {filteredParticipants.length}
               </span>
