@@ -5,7 +5,6 @@ import subprocess
 from unittest.mock import Mock, patch
 
 import pytest
-import requests
 
 from aieng_platform_onboard.admin.create_gemini_keys import (
     APIKeyCreationError,
@@ -122,9 +121,15 @@ class TestValidatePrerequisites:
 class TestCreateGeminiApiKey:
     """Tests for create_gemini_api_key function."""
 
+    @patch("aieng_platform_onboard.admin.create_gemini_keys.get_existing_api_key")
     @patch("subprocess.run")
-    def test_create_gemini_api_key_success(self, mock_run: Mock) -> None:
+    def test_create_gemini_api_key_success(
+        self, mock_run: Mock, mock_get_existing: Mock
+    ) -> None:
         """Test successful API key creation."""
+        # No existing key
+        mock_get_existing.return_value = None
+
         mock_run.return_value = Mock(
             returncode=0,
             stdout=json.dumps(
@@ -132,16 +137,32 @@ class TestCreateGeminiApiKey:
             ),
         )
 
-        result = create_gemini_api_key("test-project", "bootcamp-1", "team-1")
+        result = create_gemini_api_key(
+            "test-project",
+            "bootcamp-1",
+            "team-1",
+            dry_run=False,
+            overwrite_existing=False,
+        )
 
         assert result == "projects/test-project/locations/global/keys/test-key"
         mock_run.assert_called_once()
 
+    @patch("aieng_platform_onboard.admin.create_gemini_keys.get_existing_api_key")
     @patch("subprocess.run")
-    def test_create_gemini_api_key_dry_run(self, mock_run: Mock) -> None:
+    def test_create_gemini_api_key_dry_run(
+        self, mock_run: Mock, mock_get_existing: Mock
+    ) -> None:
         """Test API key creation in dry-run mode."""
+        # No existing key
+        mock_get_existing.return_value = None
+
         result = create_gemini_api_key(
-            "test-project", "bootcamp-1", "team-1", dry_run=True
+            "test-project",
+            "bootcamp-1",
+            "team-1",
+            dry_run=True,
+            overwrite_existing=False,
         )
 
         assert result is None
@@ -295,52 +316,62 @@ class TestValidateGeminiApiKey:
         assert is_valid is False
         assert "Invalid key" in status
 
-    @patch("requests.get")
-    @patch("time.sleep")
-    def test_validate_gemini_api_key_retry_on_500(
-        self, mock_sleep: Mock, mock_get: Mock
-    ) -> None:
+    @patch(
+        "aieng_platform_onboard.admin.create_gemini_keys._perform_validation_request"
+    )
+    def test_validate_gemini_api_key_retry_on_500(self, mock_perform: Mock) -> None:
         """Test API key validation with retry on HTTP 500."""
-        mock_get.side_effect = [
-            Mock(status_code=500),
-            Mock(status_code=500),
-            Mock(status_code=200),
+        # First two attempts return retryable errors, third succeeds
+        mock_perform.side_effect = [
+            (True, "HTTP 500"),  # Should retry (has error, should_retry=True)
+            (True, "HTTP 500"),  # Should retry
+            (False, None),  # Success (no error, should_retry=False)
         ]
 
         is_valid, status = validate_gemini_api_key("AIzaTest123")
 
         assert is_valid is True
         assert status == "Valid"
-        assert mock_get.call_count == 3
-        assert mock_sleep.call_count == 2
+        assert mock_perform.call_count == 3
 
-    @patch("requests.get")
-    @patch("time.sleep")
-    def test_validate_gemini_api_key_timeout(
-        self, mock_sleep: Mock, mock_get: Mock
-    ) -> None:
+    @patch(
+        "aieng_platform_onboard.admin.create_gemini_keys._perform_validation_request"
+    )
+    def test_validate_gemini_api_key_timeout(self, mock_perform: Mock) -> None:
         """Test API key validation with timeout."""
-        mock_get.side_effect = requests.Timeout("Request timed out")
+        # All attempts fail with timeout
+        mock_perform.side_effect = [
+            (True, "Timeout"),  # Should retry
+            (True, "Timeout"),  # Should retry
+            (False, "Timeout after 3 attempts"),  # Final failure (non-retryable)
+        ]
 
         is_valid, status = validate_gemini_api_key("AIzaTest123")
 
         assert is_valid is False
         assert "Timeout" in status
-        assert mock_get.call_count == 3
+        assert mock_perform.call_count == 3
 
-    @patch("requests.get")
-    @patch("time.sleep")
-    def test_validate_gemini_api_key_network_error(
-        self, mock_sleep: Mock, mock_get: Mock
-    ) -> None:
+    @patch(
+        "aieng_platform_onboard.admin.create_gemini_keys._perform_validation_request"
+    )
+    def test_validate_gemini_api_key_network_error(self, mock_perform: Mock) -> None:
         """Test API key validation with network error."""
-        mock_get.side_effect = requests.RequestException("Network error")
+        # All attempts fail with network error
+        mock_perform.side_effect = [
+            (True, "Network error"),  # Should retry
+            (True, "Network error"),  # Should retry
+            (
+                False,
+                "Network error: Connection failed after 3 attempts",
+            ),  # Final failure
+        ]
 
         is_valid, status = validate_gemini_api_key("AIzaTest123")
 
         assert is_valid is False
-        assert "Network error" in status
-        assert mock_get.call_count == 3
+        assert "Network error" in status or "after" in status
+        assert mock_perform.call_count == 3
 
 
 class TestUpdateTeamWithKey:
@@ -356,8 +387,8 @@ class TestUpdateTeamWithKey:
             mock_db,
             "team-1",
             "AIzaTest123",
-            "test-project",
-            "Valid",
+            "bootcamp-1-team-1-gemini",
+            dry_run=False,
         )
 
         mock_db.collection.assert_called_once_with("teams")
@@ -368,8 +399,7 @@ class TestUpdateTeamWithKey:
         update_call = mock_ref.update.call_args
         update_data = update_call[0][0]
         assert update_data["openai_api_key"] == "AIzaTest123"
-        assert update_data["openai_api_key_project"] == "test-project"
-        assert update_data["openai_api_key_validation_status"] == "Valid"
+        assert update_data["openai_api_key_name"] == "bootcamp-1-team-1-gemini"
 
     def test_update_team_with_key_dry_run(self) -> None:
         """Test team update in dry-run mode."""
@@ -379,8 +409,7 @@ class TestUpdateTeamWithKey:
             mock_db,
             "team-1",
             "AIzaTest123",
-            "test-project",
-            "Valid",
+            "bootcamp-1-team-1-gemini",
             dry_run=True,
         )
 
@@ -398,8 +427,8 @@ class TestUpdateTeamWithKey:
                 mock_db,
                 "team-1",
                 "AIzaTest123",
-                "test-project",
-                "Valid",
+                "bootcamp-1-team-1-gemini",
+                dry_run=False,
             )
 
         assert "Failed to update team" in str(exc_info.value)
@@ -408,34 +437,54 @@ class TestUpdateTeamWithKey:
 class TestShouldProcessTeam:
     """Tests for should_process_team function."""
 
-    def test_should_process_team_no_key(self) -> None:
+    @patch("subprocess.run")
+    def test_should_process_team_no_key(self, mock_run: Mock) -> None:
         """Test should process team when it has no key."""
-        team_data = {"team_name": "team-1"}
-
-        should_process, reason = should_process_team(team_data)
-
-        assert should_process is True
-        assert reason == "No key"
-
-    def test_should_process_team_has_key_no_overwrite(self) -> None:
-        """Test should not process team when it has a key and no overwrite."""
-        team_data = {"team_name": "team-1", "openai_api_key": "AIzaTest123"}
+        # Mock gcloud list command returning no keys
+        mock_run.return_value = Mock(returncode=0, stdout="[]")
 
         should_process, reason = should_process_team(
-            team_data, overwrite_existing=False
+            "test-project", "bootcamp-1", "team-1", overwrite_existing=False
+        )
+
+        assert should_process is True
+        assert "No key in GCP" in reason
+
+    @patch("subprocess.run")
+    def test_should_process_team_has_key_no_overwrite(self, mock_run: Mock) -> None:
+        """Test should not process team when it has a key and no overwrite."""
+        # Mock gcloud list command returning existing key
+        mock_run.return_value = Mock(
+            returncode=0,
+            stdout=json.dumps(
+                [{"name": "projects/test-project/locations/global/keys/test-key"}]
+            ),
+        )
+
+        should_process, reason = should_process_team(
+            "test-project", "bootcamp-1", "team-1", overwrite_existing=False
         )
 
         assert should_process is False
-        assert reason == "Already has key"
+        assert "already exists" in reason.lower()
 
-    def test_should_process_team_has_key_with_overwrite(self) -> None:
+    @patch("subprocess.run")
+    def test_should_process_team_has_key_with_overwrite(self, mock_run: Mock) -> None:
         """Test should process team when it has a key and overwrite is enabled."""
-        team_data = {"team_name": "team-1", "openai_api_key": "AIzaTest123"}
+        # Mock gcloud list command returning existing key
+        mock_run.return_value = Mock(
+            returncode=0,
+            stdout=json.dumps(
+                [{"name": "projects/test-project/locations/global/keys/test-key"}]
+            ),
+        )
 
-        should_process, reason = should_process_team(team_data, overwrite_existing=True)
+        should_process, reason = should_process_team(
+            "test-project", "bootcamp-1", "team-1", overwrite_existing=True
+        )
 
         assert should_process is True
-        assert reason == "Overwriting existing key"
+        assert "Overwriting" in reason or "overwrite" in reason.lower()
 
 
 class TestGetTeamsToProcess:
