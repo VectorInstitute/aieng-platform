@@ -22,6 +22,7 @@ dependencies = [
     "filelock==3.20.3",
     "authlib==1.6.6",
     "virtualenv==20.36.1",
+    "cryptography>=46.0.5", # Pinning version to address vulnerability CVE-2026-26007
 ]
 
 [project.scripts]

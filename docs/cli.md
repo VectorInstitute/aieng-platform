@@ -169,6 +169,116 @@ onboard admin setup-participants config/participants.csv --dry-run
 
 ---
 
+### `onboard admin create-gemini-keys`
+
+Create Gemini API keys for teams and store them in the Firestore onboarding database. This command automates the API key provisioning workflow by creating keys in a specified GCP project, validating them against the Gemini API, and updating team documents.
+
+#### Usage
+
+```bash
+onboard admin create-gemini-keys --project <gcp-project-id> --bootcamp <bootcamp-name> [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `--project` | GCP project ID where API keys will be created | Yes |
+| `--bootcamp` | Bootcamp identifier for key naming (e.g., "agent-bootcamp") | Yes |
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--dry-run` | Preview operations without creating keys or modifying Firestore | `False` |
+| `--skip-validation` | Skip Gemini API validation step (faster but skips key testing) | `False` |
+| `--overwrite-existing` | Replace existing keys for teams that already have them | `False` |
+| `--teams` | Comma-separated list of specific teams to process | All teams |
+
+#### Key Naming Convention
+
+Keys are created with the format: `{bootcamp}-{team}-gemini`
+
+Example: `agent-bootcamp-team-alpha-gemini`
+
+#### Workflow
+
+1. **Validate Prerequisites** - Checks gcloud CLI, project access, API enablement, and permissions
+2. **Fetch Teams** - Retrieves teams from Firestore (or filtered subset)
+3. **Process Each Team**:
+   - Create API key in GCP with restrictions to `generativelanguage.googleapis.com`
+   - Retrieve the key string
+   - Validate key against Gemini API (unless `--skip-validation`)
+   - Update team document with key and metadata
+4. **Display Summary** - Shows results table with created/skipped/failed teams
+
+#### Examples
+
+**Preview what would happen (no changes):**
+```bash
+onboard admin create-gemini-keys \
+  --project ai-agentic-bootcamp-july-2025 \
+  --bootcamp agent-bootcamp \
+  --dry-run
+```
+
+**Create keys for all teams:**
+```bash
+onboard admin create-gemini-keys \
+  --project ai-agentic-bootcamp-july-2025 \
+  --bootcamp agent-bootcamp
+```
+
+**Create keys for specific teams only:**
+```bash
+onboard admin create-gemini-keys \
+  --project ai-agentic-bootcamp-july-2025 \
+  --bootcamp agent-bootcamp \
+  --teams team-alpha,team-beta,team-gamma
+```
+
+**Skip validation for faster processing:**
+```bash
+onboard admin create-gemini-keys \
+  --project ai-agentic-bootcamp-july-2025 \
+  --bootcamp agent-bootcamp \
+  --skip-validation
+```
+
+**Replace existing keys:**
+```bash
+onboard admin create-gemini-keys \
+  --project ai-agentic-bootcamp-july-2025 \
+  --bootcamp agent-bootcamp \
+  --overwrite-existing
+```
+
+#### Requirements
+
+- Admin credentials (service account or gcloud auth)
+- GCP project access with API Keys service enabled
+- IAM permissions: `serviceusage.apiKeysAdmin` or `owner` role
+- Firestore write access to onboarding database
+- Generative Language API enabled in target project
+
+#### Team Document Updates
+
+The command updates team documents with:
+- `openai_api_key` - The Gemini API key string
+- `openai_api_key_project` - GCP project where key was created
+- `openai_api_key_created_at` - Timestamp of key creation
+- `updated_at` - Last update timestamp
+
+#### Error Handling
+
+- **Default Behavior**: Skips teams that already have API keys
+- **Partial Failures**: Continues processing all teams and displays detailed summary
+- **Validation Failures**: Retries 3 times with exponential backoff
+- **Quota Exceeded**: Stops processing and provides clear error message
+- **Audit Trail**: Logs all created key resource names for manual review
+
+---
+
 ### `onboard admin delete-participants`
 
 Delete participants from Firestore database. Can optionally remove empty teams after participant deletion.

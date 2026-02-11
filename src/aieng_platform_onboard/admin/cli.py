@@ -3,6 +3,9 @@
 import argparse
 import sys
 
+from aieng_platform_onboard.admin.create_gemini_keys import (
+    create_gemini_keys_for_teams,
+)
 from aieng_platform_onboard.admin.delete_participants import (
     delete_participants_from_csv,
 )
@@ -102,6 +105,45 @@ def main() -> int:
         help="Disable automatic retry with --orphan when Terraform fails",
     )
 
+    # create-gemini-keys subcommand
+    create_gemini_keys_parser = subparsers.add_parser(
+        "create-gemini-keys",
+        help="Create Gemini API keys for teams",
+        description="Automatically create and configure Gemini API keys for teams in GCP",
+    )
+    create_gemini_keys_parser.add_argument(
+        "--project",
+        type=str,
+        required=True,
+        help="GCP project ID where API keys will be created",
+    )
+    create_gemini_keys_parser.add_argument(
+        "--bootcamp",
+        type=str,
+        required=True,
+        help="Bootcamp name to use in API key naming (e.g., 'agent-bootcamp')",
+    )
+    create_gemini_keys_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and show what would be done without making changes",
+    )
+    create_gemini_keys_parser.add_argument(
+        "--skip-validation",
+        action="store_true",
+        help="Skip validation of created keys against Gemini API",
+    )
+    create_gemini_keys_parser.add_argument(
+        "--overwrite-existing",
+        action="store_true",
+        help="Recreate API keys for teams that already have them",
+    )
+    create_gemini_keys_parser.add_argument(
+        "--teams",
+        type=str,
+        help="Comma-separated list of specific team names to process",
+    )
+
     args = parser.parse_args()
 
     # Route to appropriate command handler
@@ -119,6 +161,20 @@ def main() -> int:
             orphan=args.orphan,
             auto_orphan_on_failure=not args.no_auto_orphan,
             dry_run=args.dry_run,
+        )
+    if args.command == "create-gemini-keys":
+        # Parse teams list if provided
+        team_names = None
+        if args.teams:
+            team_names = [t.strip() for t in args.teams.split(",")]
+
+        return create_gemini_keys_for_teams(
+            project_id=args.project,
+            bootcamp_name=args.bootcamp,
+            dry_run=args.dry_run,
+            skip_validation=args.skip_validation,
+            overwrite_existing=args.overwrite_existing,
+            team_names=team_names,
         )
 
     # Should never reach here due to required=True
