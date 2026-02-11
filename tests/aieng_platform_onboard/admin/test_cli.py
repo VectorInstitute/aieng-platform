@@ -1,5 +1,6 @@
 """Unit tests for admin CLI module."""
 
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -372,9 +373,7 @@ class TestDeleteWorkspacesCommand:
                 dry_run=False,
             )
 
-    def test_delete_workspaces_all_flags(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_delete_workspaces_all_flags(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test delete-workspaces with all flags combined."""
         monkeypatch.setattr(
             "sys.argv",
@@ -484,9 +483,7 @@ class TestCreateGeminiKeysCommand:
                 team_names=None,
             )
 
-    def test_create_gemini_keys_dry_run(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_create_gemini_keys_dry_run(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test create-gemini-keys with --dry-run flag."""
         monkeypatch.setattr(
             "sys.argv",
@@ -775,16 +772,12 @@ class TestMainEntryPoint:
 
     def test_main_as_script(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that main can be called as a script."""
-        import sys
-
         monkeypatch.setattr(
             "sys.argv", ["onboard admin", "create-gemini-keys", "--help"]
         )
 
         with pytest.raises(SystemExit) as exc_info:
             # Simulate running as __main__
-            from aieng_platform_onboard.admin.cli import main
-
             sys.exit(main())
 
         # Should exit with 0 for help
