@@ -7,7 +7,7 @@
 [![unit tests](https://github.com/VectorInstitute/aieng-platform/actions/workflows/unit_tests.yml/badge.svg)](https://github.com/VectorInstitute/aieng-platform/actions/workflows/unit_tests.yml)
 [![docs](https://github.com/VectorInstitute/aieng-platform/actions/workflows/docs.yml/badge.svg)](https://github.com/VectorInstitute/aieng-platform/actions/workflows/docs.yml)
 [![codecov](https://codecov.io/github/VectorInstitute/aieng-platform/graph/badge.svg?token=83MYFZ3UPA)](https://codecov.io/github/VectorInstitute/aieng-platform)
-![GitHub License](https://img.shields.io/github/license/VectorInstitute/aieng-platform)
+[![GitHub License](https://img.shields.io/github/license/VectorInstitute/aieng-platform)](https://img.shields.io/github/license/VectorInstitute/aieng-platform)
 
 
 Infrastructure and tooling for AI Engineering bootcamps, providing secure, isolated development environments and automated participant onboarding.
