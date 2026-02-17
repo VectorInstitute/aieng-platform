@@ -146,19 +146,29 @@ function classifyActivityStatus(daysSinceActive: number): ActivityStatus {
 
 /**
  * Extract the most recent last_connected_at timestamp from workspace agents
+ * Falls back to last_used_at (from Coder API) if no agent data is available
  */
 export function getLastActiveTimestamp(workspace: CoderWorkspace): string {
   let mostRecent = workspace.created_at;
 
   try {
     const resources = workspace.latest_build?.resources || [];
+    let foundAgentData = false;
+
     for (const resource of resources) {
       const agents = resource.agents || [];
       for (const agent of agents) {
         if (agent.last_connected_at && agent.last_connected_at > mostRecent) {
           mostRecent = agent.last_connected_at;
+          foundAgentData = true;
         }
       }
+    }
+
+    // If no agent data found (e.g., workspace is stopped), use last_used_at
+    // This field is provided by Coder API and tracks the last workspace usage
+    if (!foundAgentData && workspace.last_used_at && workspace.last_used_at > mostRecent) {
+      mostRecent = workspace.last_used_at;
     }
   } catch (error) {
     console.warn(`Error extracting last active timestamp for workspace ${workspace.id}:`, error);
@@ -357,16 +367,12 @@ export function aggregateByTeam(
     const avgWorkspaceHours =
       teamWorkspaces.length > 0 ? currentWorkspaceHours / teamWorkspaces.length : 0;
 
-    // Calculate active days (unique dates when workspaces were active)
+    // Calculate active days (unique dates in last 7 days when a workspace was active)
+    // Only count workspaces with activity_status === 'active', consistent with unique_active_users
     const activeDates = new Set<string>();
     teamWorkspaces.forEach((workspace) => {
-      // Add creation date
-      const createdDate = new Date(workspace.created_at).toISOString().split('T')[0];
-      activeDates.add(createdDate);
-
-      // Add last active date if different from created
-      const lastActiveDate = new Date(workspace.last_active).toISOString().split('T')[0];
-      if (lastActiveDate !== createdDate) {
+      if (workspace.activity_status === 'active') {
+        const lastActiveDate = new Date(workspace.last_active).toISOString().split('T')[0];
         activeDates.add(lastActiveDate);
       }
     });

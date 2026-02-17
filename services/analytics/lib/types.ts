@@ -4,6 +4,7 @@ export interface CoderWorkspace {
   id: string;
   created_at: string;
   updated_at: string;
+  last_used_at: string;  // Last time the workspace was used (from Coder API)
   owner_id: string;
   owner_name: string;  // This is the GitHub username!
   owner_avatar_url?: string;
