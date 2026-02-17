@@ -66,6 +66,11 @@ jobs:
           echo "Running analytics collection script..."
           python3 -m coder.analytics.collect
 
+      - name: Generate analytics aggregate
+        run: |
+          echo "Running analytics aggregation script..."
+          python3 -m coder.analytics.aggregate
+
       - name: Generate summary
         if: success()
         run: |
