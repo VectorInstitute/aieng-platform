@@ -143,25 +143,33 @@ export default function DashboardContent({ user }: DashboardContentProps) {
     return null;
   }
 
-  const { participants, summary } = data;
+  const { participants } = data;
 
   // Get unique bootcamp names for filter options
   const bootcampNames = Array.from(
     new Set(participants.map((p) => p.bootcamp_name || 'Unknown').filter(Boolean))
   ).sort();
 
-  // Filter participants based on status and bootcamp
-  const filteredParticipants = participants.filter((participant) => {
-    // Status filter
+  // Filter participants by bootcamp only (used for metrics and status filter counts)
+  const bootcampFilteredParticipants = bootcampFilter === 'all'
+    ? participants
+    : participants.filter((p) => (p.bootcamp_name || 'Unknown') === bootcampFilter);
+
+  // Compute summary metrics from bootcamp-filtered participants
+  const onboardedCount = bootcampFilteredParticipants.filter((p) => p.onboarded).length;
+  const summary: Summary = {
+    total: bootcampFilteredParticipants.length,
+    onboarded: onboardedCount,
+    notOnboarded: bootcampFilteredParticipants.length - onboardedCount,
+    percentage: bootcampFilteredParticipants.length > 0
+      ? parseFloat(((onboardedCount / bootcampFilteredParticipants.length) * 100).toFixed(1))
+      : 0,
+  };
+
+  // Filter participants based on status and bootcamp (for table display)
+  const filteredParticipants = bootcampFilteredParticipants.filter((participant) => {
     if (statusFilter === 'onboarded' && !participant.onboarded) return false;
     if (statusFilter === 'not_onboarded' && participant.onboarded) return false;
-
-    // Bootcamp filter
-    if (bootcampFilter !== 'all') {
-      const participantBootcamp = participant.bootcamp_name || 'Unknown';
-      if (participantBootcamp !== bootcampFilter) return false;
-    }
-
     return true;
   });
 
@@ -438,7 +446,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
                   backgroundSize: '1.5em 1.5em'
                 }}
               >
-                <option value="all">All Participants ({participants.length})</option>
+                <option value="all">All Participants ({bootcampFilteredParticipants.length})</option>
                 <option value="onboarded">Onboarded ({summary.onboarded})</option>
                 <option value="not_onboarded">Not Onboarded ({summary.notOnboarded})</option>
               </select>
