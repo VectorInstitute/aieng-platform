@@ -143,7 +143,6 @@ def fetch_token_from_service(  # noqa: PLR0911
                         "gcloud",
                         "auth",
                         "print-identity-token",
-                        f"--audiences={token_service_url}",
                     ],
                     check=False,
                     capture_output=True,
