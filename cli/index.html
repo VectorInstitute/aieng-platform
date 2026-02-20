@@ -2205,6 +2205,14 @@
 <li>Verify you're added to the participant list (contact admin)</li>
 <li>Check token service is deployed and accessible</li>
 </ul>
+<p><strong>Step 2 fails with a JSON parse error</strong> (<code>Expecting value: line 2 column 1</code>): the workspace service account does not have <code>roles/run.invoker</code> on the <code>firebase-token-service</code> Cloud Run service. Cloud Run's IAM layer rejects the request before it reaches the Flask app, returning a non-JSON body. An admin must run:
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>gcloud<span class="w"> </span>run<span class="w"> </span>services<span class="w"> </span>add-iam-policy-binding<span class="w"> </span>firebase-token-service<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="w">  </span>--region<span class="o">=</span>us-central1<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="w">  </span>--project<span class="o">=</span>coderd<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="w">  </span>--member<span class="o">=</span><span class="s2">&quot;serviceAccount:&lt;workspace-sa&gt;@&lt;project&gt;.iam.gserviceaccount.com&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="w">  </span>--role<span class="o">=</span><span class="s2">&quot;roles/run.invoker&quot;</span>
+</span></code></pre></div>
+See the <a href="../developer_guide/#deploying-a-new-bootcamp">Developer Guide</a> for the full new-bootcamp checklist.</p>
 <h3 id="connection-failures">Connection Failures<a class="headerlink" href="#connection-failures" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Verify GCP project ID is correct</li>
@@ -2220,7 +2228,7 @@
 <h3 id="admin-command-failures">Admin Command Failures<a class="headerlink" href="#admin-command-failures" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Ensure you're authenticated with proper GCP permissions:
-  <div class="language-bash highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>gcloud<span class="w"> </span>auth<span class="w"> </span>application-default<span class="w"> </span>login
+  <div class="language-bash highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>gcloud<span class="w"> </span>auth<span class="w"> </span>application-default<span class="w"> </span>login
 </span></code></pre></div></li>
 <li>Or set <code>GOOGLE_APPLICATION_CREDENTIALS</code> to service account key path</li>
 <li>Verify you have Firestore read/write access for the project</li>
