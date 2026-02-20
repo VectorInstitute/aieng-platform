@@ -645,7 +645,7 @@ class TestGetGlobalKeys:
 
         mock_firestore_client.collection.return_value = mock_collection
 
-        result = get_global_keys(mock_firestore_client)
+        result = get_global_keys(mock_firestore_client, "test-bootcamp")
 
         assert result == sample_global_keys
 
@@ -662,7 +662,7 @@ class TestGetGlobalKeys:
 
         mock_firestore_client.collection.return_value = mock_collection
 
-        result = get_global_keys(mock_firestore_client)
+        result = get_global_keys(mock_firestore_client, "test-bootcamp")
 
         assert result is None
 
@@ -672,7 +672,7 @@ class TestGetGlobalKeys:
         """Test global keys retrieval with exception."""
         mock_firestore_client.collection.side_effect = Exception("Database error")
 
-        result = get_global_keys(mock_firestore_client)
+        result = get_global_keys(mock_firestore_client, "test-bootcamp")
 
         assert result is None
         mock_console.print.assert_called()
@@ -729,13 +729,16 @@ class TestCreateEnvFile:
     def test_create_env_file_success(
         self,
         tmp_path: Path,
+        sample_env_example_path: Path,
         sample_team_data: dict[str, Any],
         sample_global_keys: dict[str, Any],
     ) -> None:
         """Test successful .env file creation."""
         env_path = tmp_path / ".env"
 
-        result = create_env_file(env_path, sample_team_data, sample_global_keys)
+        result = create_env_file(
+            env_path, sample_env_example_path, sample_team_data, sample_global_keys
+        )
 
         assert result is True
         assert env_path.exists()
@@ -749,6 +752,7 @@ class TestCreateEnvFile:
     def test_create_env_file_overwrite(
         self,
         tmp_path: Path,
+        sample_env_example_path: Path,
         sample_team_data: dict[str, Any],
         sample_global_keys: dict[str, Any],
     ) -> None:
@@ -756,7 +760,9 @@ class TestCreateEnvFile:
         env_path = tmp_path / ".env"
         env_path.write_text("old content")
 
-        result = create_env_file(env_path, sample_team_data, sample_global_keys)
+        result = create_env_file(
+            env_path, sample_env_example_path, sample_team_data, sample_global_keys
+        )
 
         assert result is True
         content = env_path.read_text()
@@ -767,49 +773,50 @@ class TestCreateEnvFile:
 class TestValidateEnvFile:
     """Tests for validate_env_file function."""
 
-    def test_validate_env_file_complete(self, tmp_path: Path) -> None:
+    def test_validate_env_file_complete(
+        self, tmp_path: Path, sample_env_example_path: Path
+    ) -> None:
         """Test validation of complete .env file."""
         env_path = tmp_path / ".env"
-        content = """
-OPENAI_API_KEY="test-key"
-EMBEDDING_BASE_URL="https://example.com"
-EMBEDDING_API_KEY="test-key"
-LANGFUSE_SECRET_KEY="test-key"
-LANGFUSE_PUBLIC_KEY="test-key"
-LANGFUSE_HOST="https://example.com"
-WEB_SEARCH_BASE_URL="https://example.com"
-WEB_SEARCH_API_KEY="test-key"
-WEAVIATE_HTTP_HOST="example.com"
-WEAVIATE_GRPC_HOST="example.com"
-WEAVIATE_API_KEY="test-key"
-"""
+        content = (
+            'OPENAI_API_KEY="test-key"\n'
+            'EMBEDDING_BASE_URL="https://example.com"\n'
+            'EMBEDDING_API_KEY="test-key"\n'
+            'WEAVIATE_HTTP_HOST="example.com"\n'
+            'WEAVIATE_GRPC_HOST="example.com"\n'
+            'WEAVIATE_API_KEY="test-key"\n'
+            'LANGFUSE_SECRET_KEY="test-key"\n'
+            'LANGFUSE_PUBLIC_KEY="test-key"\n'
+            'WEB_SEARCH_API_KEY="test-key"\n'
+        )
         env_path.write_text(content)
 
-        is_complete, missing = validate_env_file(env_path)
+        is_complete, missing = validate_env_file(env_path, sample_env_example_path)
 
         assert is_complete is True
         assert missing == []
 
-    def test_validate_env_file_missing_keys(self, tmp_path: Path) -> None:
+    def test_validate_env_file_missing_keys(
+        self, tmp_path: Path, sample_env_example_path: Path
+    ) -> None:
         """Test validation of incomplete .env file."""
         env_path = tmp_path / ".env"
-        content = """
-OPENAI_API_KEY="test-key"
-EMBEDDING_BASE_URL=""
-"""
+        content = 'OPENAI_API_KEY="test-key"\nEMBEDDING_BASE_URL=""\n'
         env_path.write_text(content)
 
-        is_complete, missing = validate_env_file(env_path)
+        is_complete, missing = validate_env_file(env_path, sample_env_example_path)
 
         assert is_complete is False
         assert "EMBEDDING_BASE_URL" in missing
         assert "EMBEDDING_API_KEY" in missing
 
-    def test_validate_env_file_not_exists(self, tmp_path: Path) -> None:
+    def test_validate_env_file_not_exists(
+        self, tmp_path: Path, sample_env_example_path: Path
+    ) -> None:
         """Test validation when file doesn't exist."""
         env_path = tmp_path / "nonexistent.env"
 
-        is_complete, missing = validate_env_file(env_path)
+        is_complete, missing = validate_env_file(env_path, sample_env_example_path)
 
         assert is_complete is False
         assert "File does not exist" in missing

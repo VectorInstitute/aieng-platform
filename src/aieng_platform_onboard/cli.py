@@ -165,7 +165,7 @@ def _authenticate_and_connect(
 
 
 def _fetch_participant_and_team_data(
-    db: Any, github_user: str
+    db: Any, github_user: str, bootcamp_name: str
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]] | tuple[None, None, None]:
     """
     Fetch participant, team, and global configuration data.
@@ -176,6 +176,8 @@ def _fetch_participant_and_team_data(
         Firestore client instance.
     github_user : str
         GitHub username.
+    bootcamp_name : str
+        Name of the bootcamp, used to fetch the correct global keys document.
 
     Returns
     -------
@@ -234,7 +236,7 @@ def _fetch_participant_and_team_data(
     console.print("[bold]Step 6: Fetch Global Configuration[/bold]")
     console.print("[cyan]Reading shared keys...[/cyan]")
 
-    global_keys = get_global_keys(db)
+    global_keys = get_global_keys(db, bootcamp_name)
 
     if not global_keys:
         console.print(
@@ -248,7 +250,10 @@ def _fetch_participant_and_team_data(
 
 
 def _setup_environment(
-    output_dir: str, team_data: dict[str, Any], global_keys: dict[str, Any]
+    output_dir: str,
+    env_example_path: Path,
+    team_data: dict[str, Any],
+    global_keys: dict[str, Any],
 ) -> Path | None:
     """
     Create .env file with API keys and configuration.
@@ -257,6 +262,8 @@ def _setup_environment(
     ----------
     output_dir : str
         Directory where .env file should be created.
+    env_example_path : Path
+        Path to the .env.example template file.
     team_data : dict[str, any]
         Team data containing API keys.
     global_keys : dict[str, any]
@@ -276,7 +283,9 @@ def _setup_environment(
             "[yellow]⚠ .env file already exists, will be overwritten[/yellow]"
         )
 
-    success_create = create_env_file(output_path, team_data, global_keys)
+    success_create = create_env_file(
+        output_path, env_example_path, team_data, global_keys
+    )
 
     if not success_create:
         console.print("[red]✗ Failed to create .env file[/red]")
@@ -475,6 +484,18 @@ def _run_tests_and_finalize(
     return True
 
 
+def _validate_onboard_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    """Validate required arguments for the normal onboarding flow."""
+    if not args.bootcamp_name:
+        parser.error("--bootcamp-name is required for participant onboarding")
+    if not args.test_script:
+        parser.error("--test-script is required for participant onboarding")
+    if not args.env_example:
+        parser.error("--env-example is required for participant onboarding")
+
+
 def main() -> int:  # noqa: PLR0911
     """
     Onboard bootcamp participants with team-specific API keys.
@@ -539,6 +560,11 @@ def main() -> int:  # noqa: PLR0911
         help="Pytest marker expression to filter tests (e.g. 'integration_test')",
     )
     parser.add_argument(
+        "--env-example",
+        type=str,
+        help="Path to .env.example template file",
+    )
+    parser.add_argument(
         "--firebase-api-key",
         type=str,
         help="Firebase Web API key for token exchange (or set FIREBASE_WEB_API_KEY env var)",
@@ -561,10 +587,7 @@ def main() -> int:  # noqa: PLR0911
         return display_onboarding_status_report(args.gcp_project)
 
     # Validate required arguments for normal onboarding flow
-    if not args.bootcamp_name:
-        parser.error("--bootcamp-name is required for participant onboarding")
-    if not args.test_script:
-        parser.error("--test-script is required for participant onboarding")
+    _validate_onboard_args(parser, args)
 
     # Print header
     console.print(
@@ -579,7 +602,7 @@ def main() -> int:  # noqa: PLR0911
     output_path = Path(args.output_dir) / ".env"
     if output_path.exists():
         console.print("\n[bold]Checking existing .env file...[/bold]")
-        is_complete, missing = validate_env_file(output_path)
+        is_complete, missing = validate_env_file(output_path, Path(args.env_example))
 
         if is_complete:
             console.print(
@@ -631,13 +654,15 @@ def main() -> int:  # noqa: PLR0911
 
     # Fetch data
     participant_data, team_data, global_keys = _fetch_participant_and_team_data(
-        db, github_user
+        db, github_user, args.bootcamp_name
     )
     if not participant_data or not team_data or not global_keys:
         return 1
 
     # Setup environment
-    env_output_path = _setup_environment(args.output_dir, team_data, global_keys)
+    env_output_path = _setup_environment(
+        args.output_dir, Path(args.env_example), team_data, global_keys
+    )
     if not env_output_path:
         return 1
     output_path = env_output_path

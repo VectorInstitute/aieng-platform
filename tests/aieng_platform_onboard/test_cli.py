@@ -429,21 +429,37 @@ class TestMain:
         mock_console: Mock,
     ) -> None:
         """Test main when participant is already onboarded."""
-        # Create a complete .env file
+        # Create a .env.example with the required keys
+        env_example = tmp_path / ".env.example"
+        env_example.write_text(
+            'OPENAI_API_KEY=""\n'
+            'EMBEDDING_BASE_URL=""\n'
+            'EMBEDDING_API_KEY=""\n'
+            'LANGFUSE_SECRET_KEY=""\n'
+            'LANGFUSE_PUBLIC_KEY=""\n'
+            'LANGFUSE_HOST=""\n'
+            'WEB_SEARCH_BASE_URL=""\n'
+            'WEB_SEARCH_API_KEY=""\n'
+            'WEAVIATE_HTTP_HOST=""\n'
+            'WEAVIATE_GRPC_HOST=""\n'
+            'WEAVIATE_API_KEY=""\n'
+        )
+
+        # Create a complete .env file matching all keys in .env.example
         env_file = tmp_path / ".env"
-        env_content = """
-OPENAI_API_KEY="test-key"
-EMBEDDING_BASE_URL="https://example.com"
-EMBEDDING_API_KEY="test-key"
-LANGFUSE_SECRET_KEY="test-key"
-LANGFUSE_PUBLIC_KEY="test-key"
-LANGFUSE_HOST="https://example.com"
-WEB_SEARCH_BASE_URL="https://example.com"
-WEB_SEARCH_API_KEY="test-key"
-WEAVIATE_HTTP_HOST="example.com"
-WEAVIATE_GRPC_HOST="example.com"
-WEAVIATE_API_KEY="test-key"
-"""
+        env_content = (
+            'OPENAI_API_KEY="test-key"\n'
+            'EMBEDDING_BASE_URL="https://example.com"\n'
+            'EMBEDDING_API_KEY="test-key"\n'
+            'LANGFUSE_SECRET_KEY="test-key"\n'
+            'LANGFUSE_PUBLIC_KEY="test-key"\n'
+            'LANGFUSE_HOST="https://example.com"\n'
+            'WEB_SEARCH_BASE_URL="https://example.com"\n'
+            'WEB_SEARCH_API_KEY="test-key"\n'
+            'WEAVIATE_HTTP_HOST="example.com"\n'
+            'WEAVIATE_GRPC_HOST="example.com"\n'
+            'WEAVIATE_API_KEY="test-key"\n'
+        )
         env_file.write_text(env_content)
 
         test_script = tmp_path / "test.py"
@@ -457,6 +473,8 @@ WEAVIATE_API_KEY="test-key"
                 "test",
                 "--test-script",
                 str(test_script),
+                "--env-example",
+                str(env_example),
                 "--output-dir",
                 str(tmp_path),
             ],
@@ -476,6 +494,19 @@ WEAVIATE_API_KEY="test-key"
         test_script = tmp_path / "test.py"
         test_script.write_text("print('test')")
 
+        env_example = tmp_path / ".env.example"
+        env_example.write_text(
+            'OPENAI_API_KEY=""\n'
+            'EMBEDDING_BASE_URL=""\n'
+            'EMBEDDING_API_KEY=""\n'
+            'WEAVIATE_HTTP_HOST=""\n'
+            'WEAVIATE_GRPC_HOST=""\n'
+            'WEAVIATE_API_KEY=""\n'
+            'LANGFUSE_SECRET_KEY=""\n'
+            'LANGFUSE_PUBLIC_KEY=""\n'
+            'WEB_SEARCH_API_KEY=""\n'
+        )
+
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -484,6 +515,8 @@ WEAVIATE_API_KEY="test-key"
                 "test",
                 "--test-script",
                 str(test_script),
+                "--env-example",
+                str(env_example),
                 "--output-dir",
                 str(tmp_path),
                 "--firebase-api-key",
@@ -539,7 +572,7 @@ WEAVIATE_API_KEY="test-key"
         # Mock get_global_keys
         monkeypatch.setattr(
             "aieng_platform_onboard.cli.get_global_keys",
-            lambda db: {
+            lambda db, bootcamp_name: {
                 "EMBEDDING_BASE_URL": "https://embedding.example.com",
                 "EMBEDDING_API_KEY": "test-embedding",
                 "WEAVIATE_HTTP_HOST": "weaviate.example.com",
@@ -582,6 +615,9 @@ WEAVIATE_API_KEY="test-key"
         test_script = tmp_path / "test.py"
         test_script.write_text("print('test')")
 
+        env_example = tmp_path / ".env.example"
+        env_example.write_text('OPENAI_API_KEY=""\n')
+
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -590,6 +626,8 @@ WEAVIATE_API_KEY="test-key"
                 "test",
                 "--test-script",
                 str(test_script),
+                "--env-example",
+                str(env_example),
                 "--output-dir",
                 str(tmp_path),
                 "--firebase-api-key",
@@ -619,6 +657,9 @@ WEAVIATE_API_KEY="test-key"
         test_script = tmp_path / "test.py"
         test_script.write_text("print('test')")
 
+        env_example = tmp_path / ".env.example"
+        env_example.write_text('OPENAI_API_KEY=""\n')
+
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -627,6 +668,8 @@ WEAVIATE_API_KEY="test-key"
                 "test",
                 "--test-script",
                 str(test_script),
+                "--env-example",
+                str(env_example),
                 "--output-dir",
                 str(tmp_path),
                 "--firebase-api-key",
@@ -672,6 +715,19 @@ WEAVIATE_API_KEY="test-key"
         test_script = tmp_path / "test.py"
         test_script.write_text("")
 
+        env_example = tmp_path / ".env.example"
+        env_example.write_text(
+            'OPENAI_API_KEY=""\n'
+            'EMBEDDING_BASE_URL=""\n'
+            'EMBEDDING_API_KEY=""\n'
+            'WEAVIATE_HTTP_HOST=""\n'
+            'WEAVIATE_GRPC_HOST=""\n'
+            'WEAVIATE_API_KEY=""\n'
+            'LANGFUSE_SECRET_KEY=""\n'
+            'LANGFUSE_PUBLIC_KEY=""\n'
+            'WEB_SEARCH_API_KEY=""\n'
+        )
+
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -680,6 +736,8 @@ WEAVIATE_API_KEY="test-key"
                 "test",
                 "--test-script",
                 str(test_script),
+                "--env-example",
+                str(env_example),
                 "--output-dir",
                 str(tmp_path),
                 "--firebase-api-key",
@@ -720,7 +778,7 @@ WEAVIATE_API_KEY="test-key"
         )
         monkeypatch.setattr(
             "aieng_platform_onboard.cli.get_global_keys",
-            lambda db: {
+            lambda db, bootcamp_name: {
                 "EMBEDDING_BASE_URL": "https://embedding.example.com",
                 "EMBEDDING_API_KEY": "test-embedding",
                 "WEAVIATE_HTTP_HOST": "weaviate.example.com",
@@ -762,6 +820,19 @@ WEAVIATE_API_KEY="test-key"
         test_script = tmp_path / "test.py"
         test_script.write_text("print('test')")
 
+        env_example = tmp_path / ".env.example"
+        env_example.write_text(
+            'OPENAI_API_KEY=""\n'
+            'EMBEDDING_BASE_URL=""\n'
+            'EMBEDDING_API_KEY=""\n'
+            'WEAVIATE_HTTP_HOST=""\n'
+            'WEAVIATE_GRPC_HOST=""\n'
+            'WEAVIATE_API_KEY=""\n'
+            'LANGFUSE_SECRET_KEY=""\n'
+            'LANGFUSE_PUBLIC_KEY=""\n'
+            'WEB_SEARCH_API_KEY=""\n'
+        )
+
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -770,6 +841,10 @@ WEAVIATE_API_KEY="test-key"
                 "test",
                 "--test-script",
                 str(test_script),
+                "--env-example",
+                str(env_example),
+                "--output-dir",
+                str(tmp_path),
                 "--skip-test",
                 "--firebase-api-key",
                 "test-key",
@@ -816,7 +891,7 @@ WEAVIATE_API_KEY="test-key"
 
         monkeypatch.setattr(
             "aieng_platform_onboard.cli.get_global_keys",
-            lambda db: {
+            lambda db, bootcamp_name: {
                 "EMBEDDING_BASE_URL": "https://embedding.example.com",
                 "EMBEDDING_API_KEY": "test-embedding",
                 "WEAVIATE_HTTP_HOST": "weaviate.example.com",
