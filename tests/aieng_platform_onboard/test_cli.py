@@ -1,5 +1,6 @@
 """Unit tests for aieng_platform_onboard.cli module."""
 
+import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -10,6 +11,7 @@ import pytest
 
 from aieng_platform_onboard.cli import (
     _run_tests_and_finalize,
+    _validate_onboard_args,
     display_onboarding_status_report,
     get_version,
     main,
@@ -371,6 +373,58 @@ class TestDisplayOnboardingStatusReport:
         assert exit_code == 1
 
 
+class TestValidateOnboardArgs:
+    """Tests for _validate_onboard_args function."""
+
+    def test_missing_bootcamp_name_errors(self, capsys: pytest.CaptureFixture) -> None:
+        """Test that omitting --bootcamp-name causes a parser error."""
+        parser = argparse.ArgumentParser()
+        args = argparse.Namespace(
+            bootcamp_name=None, test_script="test.py", env_example=".env.example"
+        )
+
+        with pytest.raises(SystemExit) as exc_info:
+            _validate_onboard_args(parser, args)
+
+        assert exc_info.value.code == 2
+        assert "--bootcamp-name is required" in capsys.readouterr().err
+
+    def test_missing_test_script_errors(self, capsys: pytest.CaptureFixture) -> None:
+        """Test that omitting --test-script causes a parser error."""
+        parser = argparse.ArgumentParser()
+        args = argparse.Namespace(
+            bootcamp_name="bootcamp", test_script=None, env_example=".env.example"
+        )
+
+        with pytest.raises(SystemExit) as exc_info:
+            _validate_onboard_args(parser, args)
+
+        assert exc_info.value.code == 2
+        assert "--test-script is required" in capsys.readouterr().err
+
+    def test_missing_env_example_errors(self, capsys: pytest.CaptureFixture) -> None:
+        """Test that omitting --env-example causes a parser error."""
+        parser = argparse.ArgumentParser()
+        args = argparse.Namespace(
+            bootcamp_name="bootcamp", test_script="test.py", env_example=None
+        )
+
+        with pytest.raises(SystemExit) as exc_info:
+            _validate_onboard_args(parser, args)
+
+        assert exc_info.value.code == 2
+        assert "--env-example is required" in capsys.readouterr().err
+
+    def test_all_args_present_does_not_error(self) -> None:
+        """Test that no error is raised when all three required args are present."""
+        parser = argparse.ArgumentParser()
+        args = argparse.Namespace(
+            bootcamp_name="bootcamp", test_script="test.py", env_example=".env.example"
+        )
+        # Should complete without raising
+        _validate_onboard_args(parser, args)
+
+
 class TestMain:
     """Tests for main function."""
 
@@ -421,6 +475,21 @@ class TestMain:
         assert exc_info.value.code == 2
         captured = capsys.readouterr()
         assert "--bootcamp-name is required" in captured.err
+
+    def test_main_missing_env_example(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+    ) -> None:
+        """Test main errors with a clear message when --env-example is omitted."""
+        monkeypatch.setattr(
+            "sys.argv",
+            ["onboard", "--bootcamp-name", "test", "--test-script", "test.py"],
+        )
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 2
+        assert "--env-example is required" in capsys.readouterr().err
 
     def test_main_check_already_onboarded(
         self,
