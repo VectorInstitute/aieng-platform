@@ -1,6 +1,7 @@
 """Pytest configuration and fixtures for aieng_platform_onboard tests."""
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from unittest.mock import Mock
 
@@ -104,6 +105,31 @@ def sample_global_keys() -> dict[str, Any]:
         "WEAVIATE_HTTP_SECURE": "true",
         "WEAVIATE_GRPC_SECURE": "true",
     }
+
+
+@pytest.fixture
+def sample_env_example_path(tmp_path: Path) -> Path:
+    """
+    Create a sample .env.example file for testing.
+
+    Returns
+    -------
+    Path
+        Path to the .env.example file.
+    """
+    env_example = tmp_path / ".env.example"
+    env_example.write_text(
+        'OPENAI_API_KEY=""\n'
+        'EMBEDDING_BASE_URL=""\n'
+        'EMBEDDING_API_KEY=""\n'
+        'WEAVIATE_HTTP_HOST=""\n'
+        'WEAVIATE_GRPC_HOST=""\n'
+        'WEAVIATE_API_KEY=""\n'
+        'LANGFUSE_SECRET_KEY=""\n'
+        'LANGFUSE_PUBLIC_KEY=""\n'
+        'WEB_SEARCH_API_KEY=""\n'
+    )
+    return env_example
 
 
 @pytest.fixture

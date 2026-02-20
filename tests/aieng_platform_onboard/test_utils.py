@@ -10,6 +10,7 @@ from google.cloud.firestore import Client as FirestoreClient
 from rich.console import Console
 
 from aieng_platform_onboard.utils import (
+    _parse_env_example,
     check_onboarded_status,
     create_env_file,
     exchange_custom_token_for_id_token,
@@ -155,7 +156,12 @@ class TestFetchTokenFromService:
         monkeypatch: pytest.MonkeyPatch,
         mock_requests_post: Mock,
     ) -> None:
-        """Test token fetch with user credentials using gcloud."""
+        """Test token fetch with user credentials uses gcloud without --audiences flag.
+
+        The --audiences flag is only supported for service accounts; passing it
+        for user accounts causes gcloud to error. This test verifies the command
+        is called as plain `gcloud auth print-identity-token`.
+        """
         monkeypatch.setenv("TOKEN_SERVICE_URL", "https://token-service.example.com")
 
         # Mock google.auth.default to return user credentials (no signer)
@@ -183,7 +189,10 @@ class TestFetchTokenFromService:
         assert success is True
         assert token == "test-token"
         assert error is None
-        mock_subprocess.assert_called_once()
+
+        # Verify exact gcloud command — no --audiences flag for user credentials
+        cmd = mock_subprocess.call_args[0][0]
+        assert cmd == ["gcloud", "auth", "print-identity-token"]
 
     def test_fetch_token_gcloud_failure(
         self,
@@ -645,7 +654,7 @@ class TestGetGlobalKeys:
 
         mock_firestore_client.collection.return_value = mock_collection
 
-        result = get_global_keys(mock_firestore_client)
+        result = get_global_keys(mock_firestore_client, "test-bootcamp")
 
         assert result == sample_global_keys
 
@@ -662,7 +671,7 @@ class TestGetGlobalKeys:
 
         mock_firestore_client.collection.return_value = mock_collection
 
-        result = get_global_keys(mock_firestore_client)
+        result = get_global_keys(mock_firestore_client, "test-bootcamp")
 
         assert result is None
 
@@ -672,10 +681,30 @@ class TestGetGlobalKeys:
         """Test global keys retrieval with exception."""
         mock_firestore_client.collection.side_effect = Exception("Database error")
 
-        result = get_global_keys(mock_firestore_client)
+        result = get_global_keys(mock_firestore_client, "test-bootcamp")
 
         assert result is None
         mock_console.print.assert_called()
+
+    def test_bootcamp_name_used_as_document_id(
+        self, mock_firestore_client: Mock, sample_global_keys: dict[str, Any]
+    ) -> None:
+        """Test that the bootcamp_name argument is used as the Firestore document ID."""
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = sample_global_keys
+
+        mock_ref = Mock()
+        mock_ref.get.return_value = mock_doc
+
+        mock_collection = Mock()
+        mock_collection.document.return_value = mock_ref
+
+        mock_firestore_client.collection.return_value = mock_collection
+
+        get_global_keys(mock_firestore_client, "my-bootcamp")
+
+        mock_collection.document.assert_called_once_with("my-bootcamp")
 
 
 class TestGetAllParticipantsWithStatus:
@@ -723,19 +752,78 @@ class TestGetAllParticipantsWithStatus:
         assert result == []
 
 
+class TestParseEnvExample:
+    """Tests for _parse_env_example function."""
+
+    def test_basic_key_extraction(self, tmp_path: Path) -> None:
+        """Test that keys are extracted from KEY=value lines in order."""
+        env_example = tmp_path / ".env.example"
+        env_example.write_text('FOO=""\nBAR=""\n')
+
+        keys = _parse_env_example(env_example)
+
+        assert keys == ["FOO", "BAR"]
+
+    def test_blank_and_comment_lines_skipped(self, tmp_path: Path) -> None:
+        """Test that blank lines and '#'-prefixed comment lines produce no keys."""
+        env_example = tmp_path / ".env.example"
+        env_example.write_text('# Section\n\nFOO=""\n# Another\nBAR=""\n')
+
+        keys = _parse_env_example(env_example)
+
+        assert keys == ["FOO", "BAR"]
+
+    def test_lines_without_equals_skipped(self, tmp_path: Path) -> None:
+        """Test that lines with no '=' character are ignored."""
+        env_example = tmp_path / ".env.example"
+        env_example.write_text('SOME_TEXT\nFOO=""\n')
+
+        keys = _parse_env_example(env_example)
+
+        assert keys == ["FOO"]
+
+    def test_inline_comment_does_not_corrupt_key(self, tmp_path: Path) -> None:
+        """Test that a trailing inline comment doesn't affect key parsing."""
+        env_example = tmp_path / ".env.example"
+        env_example.write_text('API_KEY="..."  # use this or GEMINI_API_KEY\n')
+
+        keys = _parse_env_example(env_example)
+
+        assert keys == ["API_KEY"]
+
+    def test_first_equals_used_as_separator(self, tmp_path: Path) -> None:
+        """Test that only the first '=' is used when the value itself contains '='."""
+        env_example = tmp_path / ".env.example"
+        env_example.write_text('KEY="value=with=equals"\n')
+
+        keys = _parse_env_example(env_example)
+
+        assert keys == ["KEY"]
+
+    def test_empty_file_returns_empty_list(self, tmp_path: Path) -> None:
+        """Test that an empty .env.example returns an empty list."""
+        env_example = tmp_path / ".env.example"
+        env_example.write_text("")
+
+        assert _parse_env_example(env_example) == []
+
+
 class TestCreateEnvFile:
     """Tests for create_env_file function."""
 
     def test_create_env_file_success(
         self,
         tmp_path: Path,
+        sample_env_example_path: Path,
         sample_team_data: dict[str, Any],
         sample_global_keys: dict[str, Any],
     ) -> None:
         """Test successful .env file creation."""
         env_path = tmp_path / ".env"
 
-        result = create_env_file(env_path, sample_team_data, sample_global_keys)
+        result = create_env_file(
+            env_path, sample_env_example_path, sample_team_data, sample_global_keys
+        )
 
         assert result is True
         assert env_path.exists()
@@ -749,6 +837,7 @@ class TestCreateEnvFile:
     def test_create_env_file_overwrite(
         self,
         tmp_path: Path,
+        sample_env_example_path: Path,
         sample_team_data: dict[str, Any],
         sample_global_keys: dict[str, Any],
     ) -> None:
@@ -756,63 +845,159 @@ class TestCreateEnvFile:
         env_path = tmp_path / ".env"
         env_path.write_text("old content")
 
-        result = create_env_file(env_path, sample_team_data, sample_global_keys)
+        result = create_env_file(
+            env_path, sample_env_example_path, sample_team_data, sample_global_keys
+        )
 
         assert result is True
         content = env_path.read_text()
         assert "old content" not in content
         assert "OPENAI_API_KEY" in content
 
+    def test_global_keys_take_priority_over_team_data(self, tmp_path: Path) -> None:
+        """Test that global_keys wins over team_data when both supply the same key."""
+        env_example = tmp_path / ".env.example"
+        env_example.write_text('SHARED_KEY=""\n')
+        env_path = tmp_path / ".env"
+
+        create_env_file(
+            env_path,
+            env_example,
+            team_data={"shared_key": "team-value"},
+            global_keys={"SHARED_KEY": "global-value"},
+        )
+
+        content = env_path.read_text()
+        assert 'SHARED_KEY="global-value"' in content
+        assert "team-value" not in content
+
+    def test_key_absent_from_both_sources_written_as_empty(
+        self, tmp_path: Path
+    ) -> None:
+        """Test that a key not found in global_keys or team_data is written as empty."""
+        env_example = tmp_path / ".env.example"
+        env_example.write_text('UNKNOWN_KEY=""\n')
+        env_path = tmp_path / ".env"
+
+        create_env_file(env_path, env_example, team_data={}, global_keys={})
+
+        assert 'UNKNOWN_KEY=""' in env_path.read_text()
+
+    def test_comments_and_blank_lines_preserved(self, tmp_path: Path) -> None:
+        """Test that comment and blank lines from .env.example are preserved."""
+        env_example = tmp_path / ".env.example"
+        env_example.write_text('# Section header\n\nAPI_KEY=""\n')
+        env_path = tmp_path / ".env"
+
+        create_env_file(env_path, env_example, team_data={}, global_keys={})
+
+        content = env_path.read_text()
+        assert "# Section header\n" in content
+        assert "\n\n" in content  # blank line preserved
+
+    def test_metadata_fields_excluded_from_global_keys(
+        self, tmp_path: Path, sample_env_example_path: Path
+    ) -> None:
+        """Test that metadata fields from global_keys are excluded from .env."""
+        env_path = tmp_path / ".env"
+        global_keys_with_metadata = {
+            "EMBEDDING_BASE_URL": "https://embedding.example.com",
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+        }
+
+        create_env_file(
+            env_path,
+            sample_env_example_path,
+            team_data={},
+            global_keys=global_keys_with_metadata,
+        )
+
+        content = env_path.read_text()
+        assert "created_at" not in content
+        assert "updated_at" not in content
+
+    def test_write_failure_returns_false(
+        self,
+        tmp_path: Path,
+        sample_env_example_path: Path,
+        sample_team_data: dict[str, Any],
+        sample_global_keys: dict[str, Any],
+        mock_console: Mock,
+    ) -> None:
+        """Test that a filesystem error during write returns False and logs."""
+        env_path = tmp_path / "nonexistent_dir" / ".env"
+
+        result = create_env_file(
+            env_path, sample_env_example_path, sample_team_data, sample_global_keys
+        )
+
+        assert result is False
+        mock_console.print.assert_called()
+
 
 class TestValidateEnvFile:
     """Tests for validate_env_file function."""
 
-    def test_validate_env_file_complete(self, tmp_path: Path) -> None:
+    def test_validate_env_file_complete(
+        self, tmp_path: Path, sample_env_example_path: Path
+    ) -> None:
         """Test validation of complete .env file."""
         env_path = tmp_path / ".env"
-        content = """
-OPENAI_API_KEY="test-key"
-EMBEDDING_BASE_URL="https://example.com"
-EMBEDDING_API_KEY="test-key"
-LANGFUSE_SECRET_KEY="test-key"
-LANGFUSE_PUBLIC_KEY="test-key"
-LANGFUSE_HOST="https://example.com"
-WEB_SEARCH_BASE_URL="https://example.com"
-WEB_SEARCH_API_KEY="test-key"
-WEAVIATE_HTTP_HOST="example.com"
-WEAVIATE_GRPC_HOST="example.com"
-WEAVIATE_API_KEY="test-key"
-"""
+        content = (
+            'OPENAI_API_KEY="test-key"\n'
+            'EMBEDDING_BASE_URL="https://example.com"\n'
+            'EMBEDDING_API_KEY="test-key"\n'
+            'WEAVIATE_HTTP_HOST="example.com"\n'
+            'WEAVIATE_GRPC_HOST="example.com"\n'
+            'WEAVIATE_API_KEY="test-key"\n'
+            'LANGFUSE_SECRET_KEY="test-key"\n'
+            'LANGFUSE_PUBLIC_KEY="test-key"\n'
+            'WEB_SEARCH_API_KEY="test-key"\n'
+        )
         env_path.write_text(content)
 
-        is_complete, missing = validate_env_file(env_path)
+        is_complete, missing = validate_env_file(env_path, sample_env_example_path)
 
         assert is_complete is True
         assert missing == []
 
-    def test_validate_env_file_missing_keys(self, tmp_path: Path) -> None:
+    def test_validate_env_file_missing_keys(
+        self, tmp_path: Path, sample_env_example_path: Path
+    ) -> None:
         """Test validation of incomplete .env file."""
         env_path = tmp_path / ".env"
-        content = """
-OPENAI_API_KEY="test-key"
-EMBEDDING_BASE_URL=""
-"""
+        content = 'OPENAI_API_KEY="test-key"\nEMBEDDING_BASE_URL=""\n'
         env_path.write_text(content)
 
-        is_complete, missing = validate_env_file(env_path)
+        is_complete, missing = validate_env_file(env_path, sample_env_example_path)
 
         assert is_complete is False
         assert "EMBEDDING_BASE_URL" in missing
         assert "EMBEDDING_API_KEY" in missing
 
-    def test_validate_env_file_not_exists(self, tmp_path: Path) -> None:
+    def test_validate_env_file_not_exists(
+        self, tmp_path: Path, sample_env_example_path: Path
+    ) -> None:
         """Test validation when file doesn't exist."""
         env_path = tmp_path / "nonexistent.env"
 
-        is_complete, missing = validate_env_file(env_path)
+        is_complete, missing = validate_env_file(env_path, sample_env_example_path)
 
         assert is_complete is False
         assert "File does not exist" in missing
+
+    def test_key_with_empty_value_reported_missing(
+        self, tmp_path: Path, sample_env_example_path: Path
+    ) -> None:
+        """Test that KEY="" (empty quoted value) is treated as a missing key."""
+        env_path = tmp_path / ".env"
+        env_path.write_text('OPENAI_API_KEY=""\n')
+
+        is_complete, missing = validate_env_file(env_path, sample_env_example_path)
+
+        assert is_complete is False
+        assert "OPENAI_API_KEY" in missing
 
 
 class TestCheckOnboardedStatus:

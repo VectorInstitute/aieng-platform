@@ -1,5 +1,6 @@
 """Unit tests for aieng_platform_onboard.cli module."""
 
+import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -10,6 +11,7 @@ import pytest
 
 from aieng_platform_onboard.cli import (
     _run_tests_and_finalize,
+    _validate_onboard_args,
     display_onboarding_status_report,
     get_version,
     main,
@@ -371,6 +373,58 @@ class TestDisplayOnboardingStatusReport:
         assert exit_code == 1
 
 
+class TestValidateOnboardArgs:
+    """Tests for _validate_onboard_args function."""
+
+    def test_missing_bootcamp_name_errors(self, capsys: pytest.CaptureFixture) -> None:
+        """Test that omitting --bootcamp-name causes a parser error."""
+        parser = argparse.ArgumentParser()
+        args = argparse.Namespace(
+            bootcamp_name=None, test_script="test.py", env_example=".env.example"
+        )
+
+        with pytest.raises(SystemExit) as exc_info:
+            _validate_onboard_args(parser, args)
+
+        assert exc_info.value.code == 2
+        assert "--bootcamp-name is required" in capsys.readouterr().err
+
+    def test_missing_test_script_errors(self, capsys: pytest.CaptureFixture) -> None:
+        """Test that omitting --test-script causes a parser error."""
+        parser = argparse.ArgumentParser()
+        args = argparse.Namespace(
+            bootcamp_name="bootcamp", test_script=None, env_example=".env.example"
+        )
+
+        with pytest.raises(SystemExit) as exc_info:
+            _validate_onboard_args(parser, args)
+
+        assert exc_info.value.code == 2
+        assert "--test-script is required" in capsys.readouterr().err
+
+    def test_missing_env_example_errors(self, capsys: pytest.CaptureFixture) -> None:
+        """Test that omitting --env-example causes a parser error."""
+        parser = argparse.ArgumentParser()
+        args = argparse.Namespace(
+            bootcamp_name="bootcamp", test_script="test.py", env_example=None
+        )
+
+        with pytest.raises(SystemExit) as exc_info:
+            _validate_onboard_args(parser, args)
+
+        assert exc_info.value.code == 2
+        assert "--env-example is required" in capsys.readouterr().err
+
+    def test_all_args_present_does_not_error(self) -> None:
+        """Test that no error is raised when all three required args are present."""
+        parser = argparse.ArgumentParser()
+        args = argparse.Namespace(
+            bootcamp_name="bootcamp", test_script="test.py", env_example=".env.example"
+        )
+        # Should complete without raising
+        _validate_onboard_args(parser, args)
+
+
 class TestMain:
     """Tests for main function."""
 
@@ -422,6 +476,21 @@ class TestMain:
         captured = capsys.readouterr()
         assert "--bootcamp-name is required" in captured.err
 
+    def test_main_missing_env_example(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+    ) -> None:
+        """Test main errors with a clear message when --env-example is omitted."""
+        monkeypatch.setattr(
+            "sys.argv",
+            ["onboard", "--bootcamp-name", "test", "--test-script", "test.py"],
+        )
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 2
+        assert "--env-example is required" in capsys.readouterr().err
+
     def test_main_check_already_onboarded(
         self,
         tmp_path: Path,
@@ -429,21 +498,37 @@ class TestMain:
         mock_console: Mock,
     ) -> None:
         """Test main when participant is already onboarded."""
-        # Create a complete .env file
+        # Create a .env.example with the required keys
+        env_example = tmp_path / ".env.example"
+        env_example.write_text(
+            'OPENAI_API_KEY=""\n'
+            'EMBEDDING_BASE_URL=""\n'
+            'EMBEDDING_API_KEY=""\n'
+            'LANGFUSE_SECRET_KEY=""\n'
+            'LANGFUSE_PUBLIC_KEY=""\n'
+            'LANGFUSE_HOST=""\n'
+            'WEB_SEARCH_BASE_URL=""\n'
+            'WEB_SEARCH_API_KEY=""\n'
+            'WEAVIATE_HTTP_HOST=""\n'
+            'WEAVIATE_GRPC_HOST=""\n'
+            'WEAVIATE_API_KEY=""\n'
+        )
+
+        # Create a complete .env file matching all keys in .env.example
         env_file = tmp_path / ".env"
-        env_content = """
-OPENAI_API_KEY="test-key"
-EMBEDDING_BASE_URL="https://example.com"
-EMBEDDING_API_KEY="test-key"
-LANGFUSE_SECRET_KEY="test-key"
-LANGFUSE_PUBLIC_KEY="test-key"
-LANGFUSE_HOST="https://example.com"
-WEB_SEARCH_BASE_URL="https://example.com"
-WEB_SEARCH_API_KEY="test-key"
-WEAVIATE_HTTP_HOST="example.com"
-WEAVIATE_GRPC_HOST="example.com"
-WEAVIATE_API_KEY="test-key"
-"""
+        env_content = (
+            'OPENAI_API_KEY="test-key"\n'
+            'EMBEDDING_BASE_URL="https://example.com"\n'
+            'EMBEDDING_API_KEY="test-key"\n'
+            'LANGFUSE_SECRET_KEY="test-key"\n'
+            'LANGFUSE_PUBLIC_KEY="test-key"\n'
+            'LANGFUSE_HOST="https://example.com"\n'
+            'WEB_SEARCH_BASE_URL="https://example.com"\n'
+            'WEB_SEARCH_API_KEY="test-key"\n'
+            'WEAVIATE_HTTP_HOST="example.com"\n'
+            'WEAVIATE_GRPC_HOST="example.com"\n'
+            'WEAVIATE_API_KEY="test-key"\n'
+        )
         env_file.write_text(env_content)
 
         test_script = tmp_path / "test.py"
@@ -457,6 +542,8 @@ WEAVIATE_API_KEY="test-key"
                 "test",
                 "--test-script",
                 str(test_script),
+                "--env-example",
+                str(env_example),
                 "--output-dir",
                 str(tmp_path),
             ],
@@ -476,6 +563,19 @@ WEAVIATE_API_KEY="test-key"
         test_script = tmp_path / "test.py"
         test_script.write_text("print('test')")
 
+        env_example = tmp_path / ".env.example"
+        env_example.write_text(
+            'OPENAI_API_KEY=""\n'
+            'EMBEDDING_BASE_URL=""\n'
+            'EMBEDDING_API_KEY=""\n'
+            'WEAVIATE_HTTP_HOST=""\n'
+            'WEAVIATE_GRPC_HOST=""\n'
+            'WEAVIATE_API_KEY=""\n'
+            'LANGFUSE_SECRET_KEY=""\n'
+            'LANGFUSE_PUBLIC_KEY=""\n'
+            'WEB_SEARCH_API_KEY=""\n'
+        )
+
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -484,6 +584,8 @@ WEAVIATE_API_KEY="test-key"
                 "test",
                 "--test-script",
                 str(test_script),
+                "--env-example",
+                str(env_example),
                 "--output-dir",
                 str(tmp_path),
                 "--firebase-api-key",
@@ -539,7 +641,7 @@ WEAVIATE_API_KEY="test-key"
         # Mock get_global_keys
         monkeypatch.setattr(
             "aieng_platform_onboard.cli.get_global_keys",
-            lambda db: {
+            lambda db, bootcamp_name: {
                 "EMBEDDING_BASE_URL": "https://embedding.example.com",
                 "EMBEDDING_API_KEY": "test-embedding",
                 "WEAVIATE_HTTP_HOST": "weaviate.example.com",
@@ -582,6 +684,9 @@ WEAVIATE_API_KEY="test-key"
         test_script = tmp_path / "test.py"
         test_script.write_text("print('test')")
 
+        env_example = tmp_path / ".env.example"
+        env_example.write_text('OPENAI_API_KEY=""\n')
+
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -590,6 +695,8 @@ WEAVIATE_API_KEY="test-key"
                 "test",
                 "--test-script",
                 str(test_script),
+                "--env-example",
+                str(env_example),
                 "--output-dir",
                 str(tmp_path),
                 "--firebase-api-key",
@@ -619,6 +726,9 @@ WEAVIATE_API_KEY="test-key"
         test_script = tmp_path / "test.py"
         test_script.write_text("print('test')")
 
+        env_example = tmp_path / ".env.example"
+        env_example.write_text('OPENAI_API_KEY=""\n')
+
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -627,6 +737,8 @@ WEAVIATE_API_KEY="test-key"
                 "test",
                 "--test-script",
                 str(test_script),
+                "--env-example",
+                str(env_example),
                 "--output-dir",
                 str(tmp_path),
                 "--firebase-api-key",
@@ -672,6 +784,19 @@ WEAVIATE_API_KEY="test-key"
         test_script = tmp_path / "test.py"
         test_script.write_text("")
 
+        env_example = tmp_path / ".env.example"
+        env_example.write_text(
+            'OPENAI_API_KEY=""\n'
+            'EMBEDDING_BASE_URL=""\n'
+            'EMBEDDING_API_KEY=""\n'
+            'WEAVIATE_HTTP_HOST=""\n'
+            'WEAVIATE_GRPC_HOST=""\n'
+            'WEAVIATE_API_KEY=""\n'
+            'LANGFUSE_SECRET_KEY=""\n'
+            'LANGFUSE_PUBLIC_KEY=""\n'
+            'WEB_SEARCH_API_KEY=""\n'
+        )
+
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -680,6 +805,8 @@ WEAVIATE_API_KEY="test-key"
                 "test",
                 "--test-script",
                 str(test_script),
+                "--env-example",
+                str(env_example),
                 "--output-dir",
                 str(tmp_path),
                 "--firebase-api-key",
@@ -720,7 +847,7 @@ WEAVIATE_API_KEY="test-key"
         )
         monkeypatch.setattr(
             "aieng_platform_onboard.cli.get_global_keys",
-            lambda db: {
+            lambda db, bootcamp_name: {
                 "EMBEDDING_BASE_URL": "https://embedding.example.com",
                 "EMBEDDING_API_KEY": "test-embedding",
                 "WEAVIATE_HTTP_HOST": "weaviate.example.com",
@@ -762,6 +889,19 @@ WEAVIATE_API_KEY="test-key"
         test_script = tmp_path / "test.py"
         test_script.write_text("print('test')")
 
+        env_example = tmp_path / ".env.example"
+        env_example.write_text(
+            'OPENAI_API_KEY=""\n'
+            'EMBEDDING_BASE_URL=""\n'
+            'EMBEDDING_API_KEY=""\n'
+            'WEAVIATE_HTTP_HOST=""\n'
+            'WEAVIATE_GRPC_HOST=""\n'
+            'WEAVIATE_API_KEY=""\n'
+            'LANGFUSE_SECRET_KEY=""\n'
+            'LANGFUSE_PUBLIC_KEY=""\n'
+            'WEB_SEARCH_API_KEY=""\n'
+        )
+
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -770,6 +910,10 @@ WEAVIATE_API_KEY="test-key"
                 "test",
                 "--test-script",
                 str(test_script),
+                "--env-example",
+                str(env_example),
+                "--output-dir",
+                str(tmp_path),
                 "--skip-test",
                 "--firebase-api-key",
                 "test-key",
@@ -816,7 +960,7 @@ WEAVIATE_API_KEY="test-key"
 
         monkeypatch.setattr(
             "aieng_platform_onboard.cli.get_global_keys",
-            lambda db: {
+            lambda db, bootcamp_name: {
                 "EMBEDDING_BASE_URL": "https://embedding.example.com",
                 "EMBEDDING_API_KEY": "test-embedding",
                 "WEAVIATE_HTTP_HOST": "weaviate.example.com",

@@ -137,6 +137,8 @@ def fetch_token_from_service(  # noqa: PLR0911
             id_token = google_jwt.encode(credentials.signer, payload)  # type: ignore[no-untyped-call]
         else:
             # User credentials or other - use gcloud
+            # Note: --audiences is only supported for service accounts;
+            # for user accounts the token is fetched without it.
             try:
                 result = subprocess.run(
                     [
@@ -357,7 +359,7 @@ def get_team_data(db: FirestoreClient, team_name: str) -> dict[str, Any] | None:
         return None
 
 
-def get_global_keys(db: FirestoreClient) -> dict[str, Any] | None:
+def get_global_keys(db: FirestoreClient, bootcamp_name: str) -> dict[str, Any] | None:
     """
     Retrieve global keys from Firestore.
 
@@ -365,6 +367,8 @@ def get_global_keys(db: FirestoreClient) -> dict[str, Any] | None:
     ----------
     db : FirestoreClient
         Firestore client instance.
+    bootcamp_name : str
+        Name of the bootcamp, used as the document ID in the global_keys collection.
 
     Returns
     -------
@@ -372,7 +376,7 @@ def get_global_keys(db: FirestoreClient) -> dict[str, Any] | None:
         Global keys data or None if not found.
     """
     try:
-        doc_ref = db.collection("global_keys").document("bootcamp-shared")
+        doc_ref = db.collection("global_keys").document(bootcamp_name)
         doc = doc_ref.get()
 
         if not doc.exists:
@@ -385,92 +389,38 @@ def get_global_keys(db: FirestoreClient) -> dict[str, Any] | None:
         return None
 
 
-def _add_embedding_section(
-    key_list: list[str], filtered_global_keys: dict[str, Any]
-) -> str:
-    """Build embedding section of .env file."""
-    if not key_list:
-        return ""
-    content = "# Embedding model\n"
-    for key in sorted(key_list):
-        content += f'{key}="{filtered_global_keys[key]}"\n'
-    content += "\n"
-    return content
+def _parse_env_example(env_example_path: Path) -> list[str]:
+    """
+    Parse a .env.example file and return the ordered list of env var names.
 
+    Skips blank lines, comment lines (starting with '#'), and lines without '='.
 
-def _add_langfuse_section(
-    key_list: list[str],
-    filtered_global_keys: dict[str, Any],
-    team_data: dict[str, Any],
-) -> str:
-    """Build LangFuse section of .env file."""
-    has_team_keys = team_data.get("langfuse_secret_key") or team_data.get(
-        "langfuse_public_key"
-    )
-    if not key_list and not has_team_keys:
-        return ""
+    Parameters
+    ----------
+    env_example_path : Path
+        Path to the .env.example file.
 
-    content = "# LangFuse\n"
-    # Team-specific keys first
-    if team_data.get("langfuse_secret_key"):
-        content += f'LANGFUSE_SECRET_KEY="{team_data.get("langfuse_secret_key", "")}"\n'
-    if team_data.get("langfuse_public_key"):
-        content += f'LANGFUSE_PUBLIC_KEY="{team_data.get("langfuse_public_key", "")}"\n'
-    # Then global keys
-    for key in sorted(key_list):
-        content += f'{key}="{filtered_global_keys[key]}"\n'
-    content += "\n"
-    return content
-
-
-def _add_web_search_section(
-    key_list: list[str],
-    filtered_global_keys: dict[str, Any],
-    team_data: dict[str, Any],
-) -> str:
-    """Build Web Search section of .env file."""
-    if not key_list and not team_data.get("web_search_api_key"):
-        return ""
-
-    content = "# Web Search\n"
-    # Global keys first
-    for key in sorted(key_list):
-        content += f'{key}="{filtered_global_keys[key]}"\n'
-    # Then team-specific key
-    if team_data.get("web_search_api_key"):
-        content += f'WEB_SEARCH_API_KEY="{team_data.get("web_search_api_key", "")}"\n'
-    content += "\n"
-    return content
-
-
-def _add_weaviate_section(
-    key_list: list[str], filtered_global_keys: dict[str, Any]
-) -> str:
-    """Build Weaviate section of .env file."""
-    if not key_list:
-        return ""
-    content = "# Weaviate\n"
-    for key in sorted(key_list):
-        content += f'{key}="{filtered_global_keys[key]}"\n'
-    content += "\n"
-    return content
-
-
-def _add_other_keys_section(
-    key_list: list[str], filtered_global_keys: dict[str, Any]
-) -> str:
-    """Build section for other uncategorized keys."""
-    if not key_list:
-        return ""
-    content = "# Other Configuration\n"
-    for key in sorted(key_list):
-        content += f'{key}="{filtered_global_keys[key]}"\n'
-    content += "\n"
-    return content
+    Returns
+    -------
+    list[str]
+        Ordered list of environment variable names defined in the file.
+    """
+    keys = []
+    with open(env_example_path) as f:
+        for line in f:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if "=" in stripped:
+                key = stripped.split("=", 1)[0].strip()
+                if key:
+                    keys.append(key)
+    return keys
 
 
 def create_env_file(
     output_path: Path,
+    env_example_path: Path,
     team_data: dict[str, Any],
     global_keys: dict[str, Any],
 ) -> bool:
@@ -481,6 +431,8 @@ def create_env_file(
     ----------
     output_path : Path
         Path where .env file should be created.
+    env_example_path : Path
+        Path to the .env.example template file.
     team_data : dict[str, Any]
         Team data containing team-specific keys.
     global_keys : dict[str, Any]
@@ -500,45 +452,25 @@ def create_env_file(
             k: v for k, v in global_keys.items() if k not in metadata_fields
         }
 
-        # Categorize global keys by prefix for organized output
-        key_categories: dict[str, list[str]] = {
-            "EMBEDDING": [],
-            "LANGFUSE": [],
-            "WEAVIATE": [],
-            "WEB_SEARCH": [],
-        }
-        other_keys = []
-
-        for key in filtered_global_keys:
-            categorized = False
-            for prefix, category_list in key_categories.items():
-                if key.startswith(prefix):
-                    category_list.append(key)
-                    categorized = True
-                    break
-            if not categorized:
-                other_keys.append(key)
-
-        # Build .env content
-        env_content = "#!/bin/bash\n"
-        env_content += "# OpenAI-compatible LLM (Gemini)\n"
-        env_content += 'OPENAI_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai/"\n'
-        env_content += f'OPENAI_API_KEY="{team_data.get("openai_api_key", "")}"\n\n'
-
-        # Add sections using helper functions
-        env_content += _add_embedding_section(
-            key_categories["EMBEDDING"], filtered_global_keys
-        )
-        env_content += _add_langfuse_section(
-            key_categories["LANGFUSE"], filtered_global_keys, team_data
-        )
-        env_content += _add_web_search_section(
-            key_categories["WEB_SEARCH"], filtered_global_keys, team_data
-        )
-        env_content += _add_weaviate_section(
-            key_categories["WEAVIATE"], filtered_global_keys
-        )
-        env_content += _add_other_keys_section(other_keys, filtered_global_keys)
+        # Read .env.example line by line, preserving comments and blank lines
+        env_content = ""
+        with open(env_example_path) as f:
+            for line in f:
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    env_content += line
+                elif "=" in stripped:
+                    key = stripped.split("=", 1)[0].strip()
+                    if key:
+                        if key in filtered_global_keys:
+                            value = filtered_global_keys[key]
+                        else:
+                            value = team_data.get(key.lower(), "")
+                        env_content += f'{key}="{value}"\n'
+                    else:
+                        env_content += line
+                else:
+                    env_content += line
 
         # Write to file
         with open(output_path, "w") as f:
@@ -587,14 +519,16 @@ def check_onboarded_status(
         return False, False
 
 
-def validate_env_file(env_path: Path) -> tuple[bool, list[str]]:
+def validate_env_file(env_path: Path, env_example_path: Path) -> tuple[bool, list[str]]:
     """
-    Validate if .env file exists and contains all required keys.
+    Validate if .env file exists and contains all keys required by .env.example.
 
     Parameters
     ----------
     env_path : Path
         Path to the .env file.
+    env_example_path : Path
+        Path to the .env.example template file that defines required keys.
 
     Returns
     -------
@@ -604,24 +538,9 @@ def validate_env_file(env_path: Path) -> tuple[bool, list[str]]:
     if not env_path.exists():
         return False, ["File does not exist"]
 
-    # Core required keys that must always be present
-    # Note: This could be made more dynamic by fetching from Firestore,
-    # but we maintain a minimal set here for basic validation
-    required_keys = [
-        "OPENAI_API_KEY",
-        "EMBEDDING_BASE_URL",
-        "EMBEDDING_API_KEY",
-        "LANGFUSE_SECRET_KEY",
-        "LANGFUSE_PUBLIC_KEY",
-        "LANGFUSE_HOST",
-        "WEB_SEARCH_BASE_URL",
-        "WEB_SEARCH_API_KEY",
-        "WEAVIATE_HTTP_HOST",
-        "WEAVIATE_GRPC_HOST",
-        "WEAVIATE_API_KEY",
-    ]
-
     try:
+        required_keys = _parse_env_example(env_example_path)
+
         with open(env_path) as f:
             content = f.read()
 
