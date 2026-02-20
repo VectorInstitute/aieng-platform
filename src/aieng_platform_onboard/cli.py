@@ -50,7 +50,9 @@ def get_version() -> str:
         return "unknown"
 
 
-def run_integration_test(test_script: Path) -> tuple[bool, str]:
+def run_integration_test(
+    test_script: Path, marker: str | None = None
+) -> tuple[bool, str]:
     """
     Execute integration test script to verify API keys.
 
@@ -58,6 +60,10 @@ def run_integration_test(test_script: Path) -> tuple[bool, str]:
     ----------
     test_script : Path
         Path to the test script.
+    marker : str | None
+        Optional pytest marker expression to pass via ``-m``. For example,
+        ``"integration_test"`` will run only tests marked with
+        ``@pytest.mark.integration_test``.
 
     Returns
     -------
@@ -65,8 +71,11 @@ def run_integration_test(test_script: Path) -> tuple[bool, str]:
         Tuple of (success, output/error).
     """
     try:
+        cmd = [sys.executable, "-m", "pytest", str(test_script)]
+        if marker:
+            cmd += ["-m", marker]
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", str(test_script)],
+            cmd,
             check=False,
             capture_output=True,
             text=True,
@@ -393,7 +402,11 @@ def display_onboarding_status_report(gcp_project: str) -> int:
 
 
 def _run_tests_and_finalize(
-    db: Any, github_user: str, skip_test: bool, test_script: str
+    db: Any,
+    github_user: str,
+    skip_test: bool,
+    test_script: str,
+    test_marker: str | None = None,
 ) -> bool:
     """
     Run integration tests and update onboarded status.
@@ -408,6 +421,8 @@ def _run_tests_and_finalize(
         Whether to skip integration tests.
     test_script : str
         Path to the integration test script.
+    test_marker : str | None
+        Optional pytest marker expression to filter tests (e.g. ``"integration_test"``).
 
     Returns
     -------
@@ -426,7 +441,9 @@ def _run_tests_and_finalize(
                 f"[red]✗ Test script not found at: {test_script_path}[/red]\n"
             )
             return False
-        success_test, output = run_integration_test(test_script_path)
+        success_test, output = run_integration_test(
+            test_script_path, marker=test_marker
+        )
 
         if success_test:
             console.print("[green]✓ All API keys tested successfully[/green]\n")
@@ -514,6 +531,12 @@ def main() -> int:  # noqa: PLR0911
         "--test-script",
         type=str,
         help="Path to integration test script",
+    )
+    parser.add_argument(
+        "--test-marker",
+        type=str,
+        default=None,
+        help="Pytest marker expression to filter tests (e.g. 'integration_test')",
     )
     parser.add_argument(
         "--firebase-api-key",
@@ -620,7 +643,9 @@ def main() -> int:  # noqa: PLR0911
     output_path = env_output_path
 
     # Run tests and finalize
-    if not _run_tests_and_finalize(db, github_user, args.skip_test, args.test_script):
+    if not _run_tests_and_finalize(
+        db, github_user, args.skip_test, args.test_script, args.test_marker
+    ):
         return 1
 
     # Final summary
