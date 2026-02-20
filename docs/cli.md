@@ -384,6 +384,16 @@ source .env
 - Verify you're added to the participant list (contact admin)
 - Check token service is deployed and accessible
 
+**Step 2 fails with a JSON parse error** (`Expecting value: line 2 column 1`): the workspace service account does not have `roles/run.invoker` on the `firebase-token-service` Cloud Run service. Cloud Run's IAM layer rejects the request before it reaches the Flask app, returning a non-JSON body. An admin must run:
+```bash
+gcloud run services add-iam-policy-binding firebase-token-service \
+  --region=us-central1 \
+  --project=coderd \
+  --member="serviceAccount:<workspace-sa>@<project>.iam.gserviceaccount.com" \
+  --role="roles/run.invoker"
+```
+See the [Developer Guide](developer_guide.md#deploying-a-new-bootcamp) for the full new-bootcamp checklist.
+
 ### Connection Failures
 
 - Verify GCP project ID is correct

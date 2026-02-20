@@ -126,6 +126,56 @@ The platform uses Firebase for authentication and data storage:
 
 ## Administration
 
+### Deploying a New Bootcamp
+
+When setting up a new bootcamp with its own GCP project and service account, complete this checklist before running the Coder template for the first time.
+
+#### 1. Grant Cloud Run Invoker permission to the workspace service account
+
+The workspace VMs authenticate to the Firebase token service using their GCP service account identity. If the service account is not granted `roles/run.invoker` on the token service, the Cloud Run IAM layer rejects the request with a non-JSON response, causing the onboarding CLI to fail at **Step 2** with a confusing JSON parse error.
+
+```bash
+gcloud run services add-iam-policy-binding firebase-token-service \
+  --region=us-central1 \
+  --project=coderd \
+  --member="serviceAccount:<workspace-sa>@<project>.iam.gserviceaccount.com" \
+  --role="roles/run.invoker"
+```
+
+**Example** (for the `agentic-ai-evaluation-bootcamp` project):
+```bash
+gcloud run services add-iam-policy-binding firebase-token-service \
+  --region=us-central1 \
+  --project=coderd \
+  --member="serviceAccount:agentic-ai-evaluation-bootcamp@agentic-ai-evaluation-bootcamp.iam.gserviceaccount.com" \
+  --role="roles/run.invoker"
+```
+
+Verify the policy:
+```bash
+gcloud run services get-iam-policy firebase-token-service \
+  --region=us-central1 \
+  --project=coderd
+```
+
+#### 2. Register participants in Firestore
+
+Participant data lives in the `coderd` GCP project, `onboarding` Firestore database. Use the admin CLI to load participants before starting any workspaces:
+
+```bash
+onboard admin setup-participants config/participants.csv
+```
+
+#### 3. Provision team API keys
+
+```bash
+onboard admin create-gemini-keys \
+  --project <bootcamp-gcp-project> \
+  --bootcamp <bootcamp-name>
+```
+
+---
+
 ### Participant Management
 
 #### Adding Participants
