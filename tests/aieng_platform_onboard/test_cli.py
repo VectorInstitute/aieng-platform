@@ -1,6 +1,7 @@
 """Unit tests for aieng_platform_onboard.cli module."""
 
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 from unittest.mock import Mock
@@ -8,6 +9,7 @@ from unittest.mock import Mock
 import pytest
 
 from aieng_platform_onboard.cli import (
+    _run_tests_and_finalize,
     display_onboarding_status_report,
     get_version,
     main,
@@ -96,6 +98,173 @@ class TestRunIntegrationTest:
 
         assert success is False
         assert "timed out" in output
+
+    def test_run_integration_test_with_marker_passes_m_flag(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that a marker is forwarded as -m <marker> to pytest."""
+        test_script = tmp_path / "test.py"
+        test_script.write_text("")
+
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_result.stdout = "1 passed"
+        mock_result.stderr = ""
+
+        mock_run = Mock(return_value=mock_result)
+        monkeypatch.setattr("subprocess.run", mock_run)
+
+        success, _ = run_integration_test(test_script, marker="integration_test")
+
+        assert success is True
+        cmd = mock_run.call_args[0][0]
+        # The command is [python, "-m", "pytest", script, "-m", "integration_test"].
+        # Two "-m" flags: one for module invocation, one for the marker.
+        assert cmd.count("-m") == 2
+        assert "integration_test" in cmd
+        # Marker value must immediately follow the second -m flag
+        assert cmd[-2:] == ["-m", "integration_test"]
+
+    def test_run_integration_test_without_marker_omits_m_flag(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that omitting marker does not add a second -m flag to pytest."""
+        test_script = tmp_path / "test.py"
+        test_script.write_text("")
+
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_result.stdout = "1 passed"
+        mock_result.stderr = ""
+
+        mock_run = Mock(return_value=mock_result)
+        monkeypatch.setattr("subprocess.run", mock_run)
+
+        run_integration_test(test_script)  # marker defaults to None
+
+        cmd = mock_run.call_args[0][0]
+        # Only one "-m" in the command: the "python -m pytest" module invocation.
+        assert cmd.count("-m") == 1
+
+    def test_run_integration_test_base_command_structure(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that the base pytest command is always [python, -m, pytest, script]."""
+        test_script = tmp_path / "test.py"
+        test_script.write_text("")
+
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_result.stdout = ""
+        mock_result.stderr = ""
+
+        mock_run = Mock(return_value=mock_result)
+        monkeypatch.setattr("subprocess.run", mock_run)
+
+        run_integration_test(test_script, marker="smoke")
+
+        cmd = mock_run.call_args[0][0]
+        assert cmd[0] == sys.executable
+        assert cmd[1:3] == ["-m", "pytest"]
+        assert str(test_script) in cmd
+
+
+class TestRunTestsAndFinalize:
+    """Tests for _run_tests_and_finalize function."""
+
+    def test_marker_forwarded_to_run_integration_test(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mock_console: Mock
+    ) -> None:
+        """Test that test_marker is forwarded to run_integration_test."""
+        test_script = tmp_path / "test.py"
+        test_script.write_text("")
+
+        captured_marker: list[str | None] = []
+
+        def mock_run_integration_test(
+            script: Path, marker: str | None = None
+        ) -> tuple[bool, str]:
+            captured_marker.append(marker)
+            return True, "passed"
+
+        monkeypatch.setattr(
+            "aieng_platform_onboard.cli.run_integration_test", mock_run_integration_test
+        )
+        monkeypatch.setattr(
+            "aieng_platform_onboard.cli.update_onboarded_status",
+            lambda db, user: (True, None),
+        )
+
+        mock_db = Mock()
+        result = _run_tests_and_finalize(
+            mock_db,
+            "test-user",
+            skip_test=False,
+            test_script=str(test_script),
+            test_marker="smoke",
+        )
+
+        assert result is True
+        assert captured_marker == ["smoke"]
+
+    def test_no_marker_passes_none_to_run_integration_test(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mock_console: Mock
+    ) -> None:
+        """Test that omitting test_marker passes None to run_integration_test."""
+        test_script = tmp_path / "test.py"
+        test_script.write_text("")
+
+        captured_marker: list[str | None] = []
+
+        def mock_run_integration_test(
+            script: Path, marker: str | None = None
+        ) -> tuple[bool, str]:
+            captured_marker.append(marker)
+            return True, "passed"
+
+        monkeypatch.setattr(
+            "aieng_platform_onboard.cli.run_integration_test", mock_run_integration_test
+        )
+        monkeypatch.setattr(
+            "aieng_platform_onboard.cli.update_onboarded_status",
+            lambda db, user: (True, None),
+        )
+
+        mock_db = Mock()
+        result = _run_tests_and_finalize(
+            mock_db, "test-user", skip_test=False, test_script=str(test_script)
+        )
+
+        assert result is True
+        assert captured_marker == [None]
+
+    def test_skip_test_does_not_call_run_integration_test(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mock_console: Mock
+    ) -> None:
+        """Test that skip_test=True bypasses run_integration_test entirely."""
+        test_script = tmp_path / "test.py"
+        test_script.write_text("")
+
+        mock_run_integration_test = Mock(return_value=(True, "passed"))
+        monkeypatch.setattr(
+            "aieng_platform_onboard.cli.run_integration_test", mock_run_integration_test
+        )
+        monkeypatch.setattr(
+            "aieng_platform_onboard.cli.update_onboarded_status",
+            lambda db, user: (True, None),
+        )
+
+        mock_db = Mock()
+        result = _run_tests_and_finalize(
+            mock_db,
+            "test-user",
+            skip_test=True,
+            test_script=str(test_script),
+            test_marker="smoke",
+        )
+
+        assert result is True
+        mock_run_integration_test.assert_not_called()
 
 
 class TestDisplayOnboardingStatusReport:
@@ -492,6 +661,96 @@ WEAVIATE_API_KEY="test-key"
         exit_code = main()
 
         assert exit_code == 1
+
+    def test_main_test_marker_passed_to_subprocess(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_console: Mock,
+    ) -> None:
+        """Test that --test-marker is forwarded as -m <marker> to pytest."""
+        test_script = tmp_path / "test.py"
+        test_script.write_text("")
+
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "onboard",
+                "--bootcamp-name",
+                "test",
+                "--test-script",
+                str(test_script),
+                "--output-dir",
+                str(tmp_path),
+                "--firebase-api-key",
+                "test-key",
+                "--test-marker",
+                "integration_test",
+            ],
+        )
+        monkeypatch.setenv("GITHUB_USER", "test-user")
+
+        monkeypatch.setattr(
+            "aieng_platform_onboard.cli.fetch_token_from_service",
+            lambda user: (True, "test-token", None),
+        )
+        mock_db = Mock()
+        monkeypatch.setattr(
+            "aieng_platform_onboard.cli.initialize_firestore_with_token",
+            lambda *args, **kwargs: mock_db,
+        )
+        monkeypatch.setattr(
+            "aieng_platform_onboard.cli.check_onboarded_status",
+            lambda db, user: (True, False),
+        )
+        monkeypatch.setattr(
+            "aieng_platform_onboard.cli.get_participant_data",
+            lambda db, user: {"github_handle": "test-user", "team_name": "test-team"},
+        )
+        monkeypatch.setattr(
+            "aieng_platform_onboard.cli.get_team_data",
+            lambda db, team: {
+                "team_name": "test-team",
+                "openai_api_key": "test-key",
+                "langfuse_secret_key": "test-secret",
+                "langfuse_public_key": "test-public",
+                "langfuse_url": "https://test.example.com",
+                "web_search_api_key": "test-search",
+            },
+        )
+        monkeypatch.setattr(
+            "aieng_platform_onboard.cli.get_global_keys",
+            lambda db: {
+                "EMBEDDING_BASE_URL": "https://embedding.example.com",
+                "EMBEDDING_API_KEY": "test-embedding",
+                "WEAVIATE_HTTP_HOST": "weaviate.example.com",
+                "WEAVIATE_GRPC_HOST": "weaviate-grpc.example.com",
+                "WEAVIATE_API_KEY": "test-weaviate",
+                "WEAVIATE_HTTP_PORT": "443",
+                "WEAVIATE_GRPC_PORT": "50051",
+                "WEAVIATE_HTTP_SECURE": "true",
+                "WEAVIATE_GRPC_SECURE": "true",
+            },
+        )
+
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_result.stdout = "1 passed"
+        mock_result.stderr = ""
+        mock_run = Mock(return_value=mock_result)
+        monkeypatch.setattr("subprocess.run", mock_run)
+
+        monkeypatch.setattr(
+            "aieng_platform_onboard.cli.update_onboarded_status",
+            lambda db, user: (True, None),
+        )
+
+        exit_code = main()
+
+        assert exit_code == 0
+        cmd = mock_run.call_args[0][0]
+        assert "-m" in cmd
+        assert "integration_test" in cmd
 
     def test_main_skip_test_flag(
         self,
