@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import cast
 
 import pandas as pd
+from google.cloud.firestore import ArrayUnion
 from google.cloud.firestore import Client as FirestoreClient
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -189,7 +190,7 @@ def create_or_update_teams(
                     )
                     team_ref.update(
                         {
-                            "participants": participant_handles,
+                            "participants": ArrayUnion(participant_handles),
                             "updated_at": datetime.now(timezone.utc),
                         }
                     )

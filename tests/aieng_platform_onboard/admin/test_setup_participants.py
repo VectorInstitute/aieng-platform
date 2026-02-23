@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pandas as pd
+from google.cloud.firestore import ArrayUnion
 
 from aieng_platform_onboard.admin.setup_participants import (
     create_or_update_participants,
@@ -219,7 +220,7 @@ class TestCreateOrUpdateTeams:
             mock_doc_ref.set.assert_called_once()
 
     def test_update_existing_teams(self, mock_firestore_client: Mock) -> None:
-        """Test updating existing teams."""
+        """Test updating existing teams appends participants using ArrayUnion."""
         teams_data = {
             "team-a": [
                 {"github_handle": "user1", "email": "user1@example.com"},
@@ -249,6 +250,42 @@ class TestCreateOrUpdateTeams:
 
             assert "team-a" in team_ids
             mock_doc_ref.update.assert_called_once()
+            # Verify participants are appended via ArrayUnion, not replaced
+            call_args = mock_doc_ref.update.call_args[0][0]
+            assert isinstance(call_args["participants"], ArrayUnion)
+
+    def test_update_existing_teams_does_not_replace_participants(
+        self, mock_firestore_client: Mock
+    ) -> None:
+        """Test that updating an existing team appends participants, not replaces."""
+        teams_data = {
+            "team-a": [
+                {"github_handle": "new-user", "email": "new@example.com"},
+            ],
+        }
+
+        existing_team = {
+            "id": "team-a",
+            "team_name": "team-a",
+            "participants": ["old-user"],
+        }
+
+        with patch(
+            "aieng_platform_onboard.admin.setup_participants.get_team_by_name",
+            return_value=existing_team,
+        ):
+            mock_doc_ref = Mock()
+            mock_collection = Mock()
+            mock_collection.document.return_value = mock_doc_ref
+            mock_firestore_client.collection.return_value = mock_collection
+
+            create_or_update_teams(mock_firestore_client, teams_data, dry_run=False)
+
+            call_args = mock_doc_ref.update.call_args[0][0]
+            participants_value = call_args["participants"]
+            # Must be ArrayUnion (append), not a plain list (replace)
+            assert isinstance(participants_value, ArrayUnion)
+            assert not isinstance(participants_value, list)
 
     def test_create_teams_dry_run(self, mock_firestore_client: Mock) -> None:
         """Test creating teams in dry run mode."""
