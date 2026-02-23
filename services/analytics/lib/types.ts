@@ -122,6 +122,7 @@ export interface TemplateMetrics {
   total_active_hours: number;     // Accumulated active hours from Insights API (includes deleted workspaces)
   avg_workspace_hours: number;    // Average workspace usage hours (first to last connection)
   team_distribution: Record<string, number>;
+  team_active_hours: Record<string, number>;   // Accumulated active hours per team for this template
 }
 
 // ===== API Response Types =====

@@ -386,7 +386,7 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                       </td>
                       <td className="px-6 py-4 text-right text-sm">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                          {team.total_active_hours.toLocaleString()}h
+                          {(template.team_active_hours?.[team.team_name] ?? 0).toLocaleString()}h
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-vector-turquoise">

@@ -470,6 +470,16 @@ def compute_template_metrics(
         for ws in workspaces:
             team_dist[ws["team_name"]] += 1
 
+        # Per-team active hours for this template specifically (not team-wide totals)
+        team_active_hours: dict[str, float] = defaultdict(float)
+        for r in accumulated_usage.values():
+            if (
+                r.get("template_name") == t_name
+                and r.get("team_name", "Unassigned") not in EXCLUDED_TEAMS
+            ):
+                team = r.get("team_name", "Unassigned")
+                team_active_hours[team] += r.get("total_active_hours", 0.0)
+
         result.append(
             {
                 "template_id": t_id,
@@ -482,6 +492,9 @@ def compute_template_metrics(
                 "total_active_hours": round(total_active_hours),
                 "avg_workspace_hours": round(avg_ws_hours * 10) / 10,
                 "team_distribution": dict(team_dist),
+                "team_active_hours": {
+                    team: round(hours) for team, hours in team_active_hours.items()
+                },
             }
         )
 

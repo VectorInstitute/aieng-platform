@@ -677,7 +677,12 @@ def calculate_accumulated_usage(
                 "owner_name": data["owner_name"],
                 "template_name": data["template_name"],
                 "team_name": team_name,
-                "total_active_hours": data["current_active"],
+                # Start at 0 so we don't inherit cross-template hours.
+                # The Insights API returns a per-user total across all templates,
+                # so initialising with current_active would incorrectly dump all
+                # historical activity from other templates into this new record.
+                # The next collection run will add only the incremental delta.
+                "total_active_hours": 0.0,
                 "total_workspace_hours": sum(workspace_hours_map.values()),
                 "workspace_ids": workspace_ids,
                 "last_updated": now,
