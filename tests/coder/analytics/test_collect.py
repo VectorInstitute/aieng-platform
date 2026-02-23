@@ -213,7 +213,13 @@ class TestCalculateAccumulatedUsage:
     """Tests for calculate_accumulated_usage function."""
 
     def test_creates_new_record_for_new_workspace(self) -> None:
-        """Test creating a new accumulated usage record for a new workspace."""
+        """Test that a new accumulated usage record starts at 0 active hours.
+
+        New records must not be pre-loaded with the Insights API value because
+        that value is a per-user total across all templates, not template-specific.
+        The workspace_usage_snapshot still stores the current value so subsequent
+        runs can compute the correct incremental delta.
+        """
         current_workspaces = [
             {
                 "id": "ws-1",
@@ -235,8 +241,11 @@ class TestCalculateAccumulatedUsage:
 
         key = "user1_python-dev"
         assert key in accumulated
-        assert accumulated[key]["total_active_hours"] == 10.0
+        # New record starts at 0, not at current_active, to avoid inheriting
+        # cross-template hours from the Insights API per-user total.
+        assert accumulated[key]["total_active_hours"] == 0.0
         assert accumulated[key]["team_name"] == "team-a"
+        # Snapshot stores the actual current value for delta computation next run.
         assert "ws-1" in snapshots
         assert snapshots["ws-1"]["active_hours"] == 10.0
 
@@ -332,17 +341,19 @@ class TestCalculateAccumulatedUsage:
         assert "ws-1" not in snapshots
 
     def test_handles_multiple_templates_per_user(self) -> None:
-        """Test accumulation across multiple templates for same user.
+        """Test that brand-new records for multiple templates both start at 0.
 
-        Note: active_hours from Insights API is per-user, so both templates
-        get the same value (max across all workspaces).
+        The Insights API returns a per-user total across all templates.
+        Initialising new records with that value would double-count hours for
+        users who have workspaces on more than one template.  Both records must
+        start at 0 and accumulate only incremental deltas going forward.
         """
         current_workspaces = [
             {
                 "id": "ws-1",
                 "owner_name": "user1",
                 "template_name": "python-dev",
-                "active_hours": 10.0,  # Per-user value
+                "active_hours": 10.0,  # Per-user Insights API total
             },
             {
                 "id": "ws-2",
@@ -364,9 +375,71 @@ class TestCalculateAccumulatedUsage:
 
         assert "user1_python-dev" in accumulated
         assert "user1_nodejs-dev" in accumulated
-        # Both should have the same per-user active hours (10.0)
-        assert accumulated["user1_python-dev"]["total_active_hours"] == 10.0
-        assert accumulated["user1_nodejs-dev"]["total_active_hours"] == 10.0
+        # Both new records start at 0 to avoid inheriting cross-template hours.
+        assert accumulated["user1_python-dev"]["total_active_hours"] == 0.0
+        assert accumulated["user1_nodejs-dev"]["total_active_hours"] == 0.0
+
+    def test_new_template_does_not_inherit_existing_template_hours(self) -> None:
+        """Test that a new template record does not inherit hours from other templates.
+
+        Regression test for the bug where a user with accumulated hours on
+        template A would have those hours immediately copied into a brand-new
+        record for template B when they created their first workspace there.
+
+        Scenario: user1 has 45h accumulated on python-dev (recorded across many
+        runs).  The Insights API now returns 50h (a 5h increase since last run).
+        user1 simultaneously creates a first workspace on nodejs-dev.
+
+        Expected:
+        - python-dev gains the 5h delta → 50h total (correct)
+        - nodejs-dev starts at 0h, not 50h (the cross-template Insights total)
+        """
+        current_workspaces = [
+            {
+                "id": "ws-1",
+                "owner_name": "user1",
+                "template_name": "python-dev",
+                "active_hours": 50.0,  # Current Insights API total for user1
+            },
+            {
+                "id": "ws-2",  # First workspace on nodejs-dev
+                "owner_name": "user1",
+                "template_name": "nodejs-dev",
+                "active_hours": 50.0,  # Same per-user Insights API total
+            },
+        ]
+        historical_accumulated = {
+            "user1_python-dev": {
+                "owner_name": "user1",
+                "template_name": "python-dev",
+                "team_name": "team-a",
+                "total_active_hours": 45.0,
+                "last_updated": "2024-01-01T00:00:00Z",
+                "first_seen": "2024-01-01T00:00:00Z",
+            }
+        }
+        historical_workspace_snapshots = {
+            "ws-1": {
+                "active_hours": 45.0,  # Previous Insights API value for user1
+                "owner_name": "user1",
+                "template_name": "python-dev",
+            }
+        }
+        participant_mappings = {"user1": {"team_name": "team-a"}}
+
+        accumulated, snapshots = calculate_accumulated_usage(
+            current_workspaces,
+            historical_accumulated,
+            historical_workspace_snapshots,
+            participant_mappings,
+        )
+
+        # python-dev: existing record grows by delta (50 - 45 = 5h)
+        assert accumulated["user1_python-dev"]["total_active_hours"] == 50.0
+        # nodejs-dev: new record must start at 0, not inherit the 50h total
+        assert accumulated["user1_nodejs-dev"]["total_active_hours"] == 0.0
+        # Snapshot for the new workspace records current value for next delta
+        assert snapshots["ws-2"]["active_hours"] == 50.0
 
     def test_prevents_negative_delta(self) -> None:
         """Test that negative deltas (hours going backwards) are treated as 0."""
@@ -493,10 +566,11 @@ class TestCalculateAccumulatedUsage:
         assert accumulated[key]["total_active_hours"] == 15.0
 
     def test_handles_multiple_workspaces_same_user_template(self) -> None:
-        """Test accumulation when user has multiple workspaces from same template.
+        """Test that multiple workspaces under the same user+template start at 0.
 
-        Note: active_hours from Insights API is per-user (same across all workspaces),
-        so we take the max value, not sum.
+        active_hours from the Insights API is per-user, so both workspaces carry
+        the same value.  The new record still starts at 0; workspace snapshots
+        record the current per-user value so the next run computes the correct delta.
         """
         current_workspaces = [
             {
@@ -524,6 +598,6 @@ class TestCalculateAccumulatedUsage:
         )
 
         key = "user1_python-dev"
-        # Should be 10 (max of user's active_hours, not sum)
-        assert accumulated[key]["total_active_hours"] == 10.0
+        # New record starts at 0 (not the per-user Insights API total).
+        assert accumulated[key]["total_active_hours"] == 0.0
         assert len(snapshots) == 2
