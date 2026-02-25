@@ -72,4 +72,10 @@ Automated system for securely distributing team-specific API keys to bootcamp pa
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+> **Note:** If your `.env` file is incomplete or needs to be updated, you can re-run onboarding manually from inside your Coder workspace (from the repo root):
+>
+> ```bash
+> onboard --bootcamp-name "agentic-ai-evaluation-bootcamp" --output-dir "." --test-script "./aieng-eval-agents/tests/test_integration.py" --env-example "./.env.example" --test-marker "integration_test" --force
+> ```
+
 ---
