@@ -8,7 +8,7 @@ import type { AnalyticsSnapshot, TeamMetrics } from '@/lib/types';
 import { Tooltip } from '@/app/components/tooltip';
 import { aggregateByCompany } from '@/lib/company-utils';
 
-type SortColumn = 'team_name' | 'workspaces_for_template' | 'unique_active_users' | 'total_workspace_hours' | 'total_active_hours' | 'active_days';
+type SortColumn = 'team_name' | 'workspaces_for_template' | 'unique_active_users' | 'template_active_hours' | 'active_days';
 type SortDirection = 'asc' | 'desc';
 
 interface TemplateTeamsContentProps {
@@ -61,7 +61,7 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
   const template = data?.template_metrics.find(t => t.template_name === decodeURIComponent(templateName));
 
   // Filter team metrics for this template
-  const templateTeams: (TeamMetrics & { workspaces_for_template: number })[] = useMemo(() => {
+  const templateTeams: (TeamMetrics & { workspaces_for_template: number; template_active_hours: number })[] = useMemo(() => {
     if (!data || !template) return [];
 
     return data.team_metrics
@@ -69,7 +69,8 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
         const workspacesForTemplate = template.team_distribution[team.team_name] || 0;
         return {
           ...team,
-          workspaces_for_template: workspacesForTemplate
+          workspaces_for_template: workspacesForTemplate,
+          template_active_hours: template.team_active_hours?.[team.team_name] ?? 0,
         };
       })
       .filter(team => team.workspaces_for_template > 0);
@@ -343,12 +344,12 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                     </th>
                     <th
                       className="px-6 py-4 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                      onClick={() => handleSort('total_active_hours')}
+                      onClick={() => handleSort('template_active_hours')}
                     >
                       <Tooltip content="Total hours with active workspace app connections (IDE, terminal, etc.) - measured from Coder Insights API">
                         <div className="flex items-center justify-end gap-2">
                           Active Hours
-                          {getSortIcon('total_active_hours')}
+                          {getSortIcon('template_active_hours')}
                         </div>
                       </Tooltip>
                     </th>
@@ -386,7 +387,7 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
                       </td>
                       <td className="px-6 py-4 text-right text-sm">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                          {(template.team_active_hours?.[team.team_name] ?? 0).toLocaleString()}h
+                          {team.template_active_hours.toLocaleString()}h
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-vector-turquoise">

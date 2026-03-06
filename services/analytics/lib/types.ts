@@ -1,15 +1,5 @@
 // ===== Firestore Types =====
 
-export interface ParticipantData {
-  github_handle: string;
-  team_name: string;
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  onboarded?: boolean;
-  onboarded_at?: string;
-}
-
 export interface TeamData {
   team_name: string;
   participants: string[];  // Array of github_handles

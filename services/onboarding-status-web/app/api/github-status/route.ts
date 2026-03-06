@@ -11,7 +11,7 @@ const ORG_NAME = 'AI-Engineering-Platform';
 const statusCache = new Map<string, { status: string; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-export type GitHubStatus = 'member' | 'pending' | 'not_invited';
+type GitHubStatus = 'member' | 'pending' | 'not_invited';
 
 interface GitHubStatusResponse {
   github_handle: string;
