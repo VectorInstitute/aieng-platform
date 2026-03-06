@@ -51,10 +51,10 @@ export function extractCompanyName(teamName: string): string {
  * - Calculate active_days as union of all dates (not sum)
  */
 export function aggregateByCompany(
-  teams: (TeamMetrics & { workspaces_for_template: number })[]
-): (TeamMetrics & { workspaces_for_template: number })[] {
+  teams: (TeamMetrics & { workspaces_for_template: number; template_active_hours: number })[]
+): (TeamMetrics & { workspaces_for_template: number; template_active_hours: number })[] {
   // Group teams by company using Map
-  const companyMap = new Map<string, (TeamMetrics & { workspaces_for_template: number })[]>();
+  const companyMap = new Map<string, (TeamMetrics & { workspaces_for_template: number; template_active_hours: number })[]>();
 
   teams.forEach(team => {
     const company = extractCompanyName(team.team_name);
@@ -70,6 +70,7 @@ export function aggregateByCompany(
     const total_workspace_hours = companyTeams.reduce((sum, t) => sum + t.total_workspace_hours, 0);
     const total_active_hours = companyTeams.reduce((sum, t) => sum + t.total_active_hours, 0);
     const workspaces_for_template = companyTeams.reduce((sum, t) => sum + t.workspaces_for_template, 0);
+    const template_active_hours = companyTeams.reduce((sum, t) => sum + t.template_active_hours, 0);
     const avg_workspace_hours = total_workspaces > 0 ? total_workspace_hours / total_workspaces : 0;
 
     // Deduplicate members by github_handle, keep most recent activity
@@ -119,6 +120,7 @@ export function aggregateByCompany(
       avg_workspace_hours: Math.round(avg_workspace_hours * 10) / 10,
       active_days: activeDates.size,
       workspaces_for_template,
+      template_active_hours: Math.round(template_active_hours),
       template_distribution,
       members
     };

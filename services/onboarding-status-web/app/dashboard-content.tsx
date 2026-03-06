@@ -23,7 +23,6 @@ interface Summary {
 
 interface ApiResponse {
   participants: Participant[];
-  summary: Summary;
 }
 
 interface DashboardContentProps {
