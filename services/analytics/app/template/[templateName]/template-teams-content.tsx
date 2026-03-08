@@ -71,6 +71,8 @@ export default function TemplateTeamsContent({ user, templateName }: TemplateTea
           ...team,
           workspaces_for_template: workspacesForTemplate,
           template_active_hours: template.team_active_hours?.[team.team_name] ?? 0,
+          unique_active_users: template.team_unique_active_users?.[team.team_name] ?? 0,
+          active_days: template.team_active_days?.[team.team_name] ?? 0,
         };
       })
       .filter(team => team.workspaces_for_template > 0);
