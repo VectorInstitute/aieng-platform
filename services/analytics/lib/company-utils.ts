@@ -91,8 +91,8 @@ export function aggregateByCompany(
     const members = Array.from(memberMap.values())
       .sort((a, b) => new Date(b.last_active).getTime() - new Date(a.last_active).getTime());
 
-    // Count unique active users
-    const unique_active_users = members.filter(m => m.activity_status === 'active').length;
+    // Sum template-scoped unique active users across company teams
+    const unique_active_users = companyTeams.reduce((sum, t) => sum + t.unique_active_users, 0);
 
     // Merge template distributions
     const template_distribution: Record<string, number> = {};
@@ -102,14 +102,8 @@ export function aggregateByCompany(
       });
     });
 
-    // Calculate active days as union of all dates
-    const activeDates = new Set<string>();
-    companyTeams.forEach(team => {
-      team.members.forEach(member => {
-        const date = new Date(member.last_active).toISOString().split('T')[0];
-        activeDates.add(date);
-      });
-    });
+    // Active days: max across company teams (teams share the same calendar)
+    const active_days = Math.max(0, ...companyTeams.map(t => t.active_days));
 
     return {
       team_name: companyName,
@@ -118,7 +112,7 @@ export function aggregateByCompany(
       total_workspace_hours: Math.round(total_workspace_hours),
       total_active_hours: Math.round(total_active_hours),
       avg_workspace_hours: Math.round(avg_workspace_hours * 10) / 10,
-      active_days: activeDates.size,
+      active_days,
       workspaces_for_template,
       template_active_hours: Math.round(template_active_hours),
       template_distribution,

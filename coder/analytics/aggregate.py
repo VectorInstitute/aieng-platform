@@ -416,6 +416,7 @@ def compute_template_metrics(
     registry: dict[str, dict[str, Any]],
     templates: list[dict[str, Any]],
     accumulated_usage: dict[str, Any],
+    accumulated_daily_engagement: dict[str, Any],
     now: datetime,
 ) -> list[dict[str, Any]]:
     """Compute per-template metrics combining registry and accumulated usage."""
@@ -480,6 +481,27 @@ def compute_template_metrics(
                 team = r.get("team_name", "Unassigned")
                 team_active_hours[team] += r.get("total_active_hours", 0.0)
 
+        # Per-team unique active users and active days for this template specifically
+        cutoff = (now - timedelta(days=ACTIVE_DAYS)).strftime("%Y-%m-%d")
+        team_unique_active_users: dict[str, int] = {}
+        team_active_days: dict[str, int] = {}
+        for team_name in team_dist:
+            team_ws = [ws for ws in workspaces if ws["team_name"] == team_name]
+            active = {
+                ws["owner_name"].lower()
+                for ws in team_ws
+                if activity_status(ws["last_used_at"], now) == "active"
+            }
+            team_unique_active_users[team_name] = len(active)
+            owners_lower = {ws["owner_name"].lower() for ws in team_ws}
+            dates: set[str] = set()
+            for date_str, day_data in accumulated_daily_engagement.items():
+                if date_str >= cutoff and owners_lower & set(
+                    day_data.get("unique_users", [])
+                ):
+                    dates.add(date_str)
+            team_active_days[team_name] = len(dates)
+
         result.append(
             {
                 "template_id": t_id,
@@ -495,6 +517,8 @@ def compute_template_metrics(
                 "team_active_hours": {
                     team: round(hours) for team, hours in team_active_hours.items()
                 },
+                "team_unique_active_users": team_unique_active_users,
+                "team_active_days": team_active_days,
             }
         )
 
@@ -665,7 +689,7 @@ def main() -> None:
 
     console.print("[cyan]Computing template metrics...[/cyan]")
     template_metrics = compute_template_metrics(
-        registry, templates, accumulated_usage, now
+        registry, templates, accumulated_usage, accumulated_daily_engagement, now
     )
     console.print(f"[green]✓[/green] {len(template_metrics)} templates")
 
