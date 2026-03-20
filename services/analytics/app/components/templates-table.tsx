@@ -75,7 +75,7 @@ export function TemplatesTable({ templates }: TemplatesTableProps) {
               >
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-gradient-to-br from-vector-turquoise to-vector-cobalt flex items-center justify-center overflow-hidden">
+                    <div className="flex-shrink-0 h-12 w-12 rounded-xl overflow-hidden shadow-md ring-1 ring-white/10 bg-slate-800/40">
                       {template.template_icon ? (
                         <Image
                           src={
@@ -84,13 +84,15 @@ export function TemplatesTable({ templates }: TemplatesTableProps) {
                               : template.template_icon
                           }
                           alt={template.template_display_name}
-                          width={28}
-                          height={28}
-                          className="object-contain"
+                          width={48}
+                          height={48}
+                          className="object-cover w-full h-full"
                           unoptimized={template.template_icon.startsWith('/')}
                         />
                       ) : (
-                        <Package className="h-5 w-5 text-white" />
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-vector-turquoise to-vector-cobalt">
+                          <Package className="h-5 w-5 text-white" />
+                        </div>
                       )}
                     </div>
                     <div>
