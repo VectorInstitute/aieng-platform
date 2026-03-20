@@ -507,6 +507,7 @@ def compute_template_metrics(
                 "template_id": t_id,
                 "template_name": t_name,
                 "template_display_name": template.get("display_name", t_name),
+                "template_icon": template.get("icon", ""),
                 "total_workspaces": len(all_ws_ids),
                 "active_workspaces": len(active_ws),
                 "unique_active_users": len(active_users),

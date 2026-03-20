@@ -105,6 +105,7 @@ export interface TemplateMetrics {
   template_id: string;
   template_name: string;
   template_display_name: string;
+  template_icon: string;
   total_workspaces: number;
   active_workspaces: number;
   unique_active_users: number;    // Number of unique users with activity in last 7 days
