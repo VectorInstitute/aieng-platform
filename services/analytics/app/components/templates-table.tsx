@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Package, ChevronRight } from 'lucide-react';
 import type { TemplateMetrics } from '@/lib/types';
 import { Tooltip } from './tooltip';
@@ -74,8 +75,23 @@ export function TemplatesTable({ templates }: TemplatesTableProps) {
               >
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-gradient-to-br from-vector-turquoise to-vector-cobalt flex items-center justify-center">
-                      <Package className="h-5 w-5 text-white" />
+                    <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-gradient-to-br from-vector-turquoise to-vector-cobalt flex items-center justify-center overflow-hidden">
+                      {template.template_icon ? (
+                        <Image
+                          src={
+                            template.template_icon.startsWith('/')
+                              ? `https://platform.vectorinstitute.ai${template.template_icon}`
+                              : template.template_icon
+                          }
+                          alt={template.template_display_name}
+                          width={28}
+                          height={28}
+                          className="object-contain"
+                          unoptimized={template.template_icon.startsWith('/')}
+                        />
+                      ) : (
+                        <Package className="h-5 w-5 text-white" />
+                      )}
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-slate-900 dark:text-white">
