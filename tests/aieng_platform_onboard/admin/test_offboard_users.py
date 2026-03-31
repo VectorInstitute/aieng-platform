@@ -2,6 +2,7 @@
 
 import json
 import subprocess
+from contextlib import ExitStack
 from typing import Any
 from unittest.mock import Mock, patch
 
@@ -94,9 +95,11 @@ class TestFetchGithubOrgMembers:
 
     def test_gh_cli_not_found_raises(self) -> None:
         """Missing gh CLI raises RuntimeError."""
-        with patch("subprocess.run", side_effect=FileNotFoundError()):
-            with pytest.raises(RuntimeError, match="gh CLI not found"):
-                fetch_github_org_members("my-org")
+        with (
+            patch("subprocess.run", side_effect=FileNotFoundError()),
+            pytest.raises(RuntimeError, match="gh CLI not found"),
+        ):
+            fetch_github_org_members("my-org")
 
     def test_api_failure_raises(self) -> None:
         """Non-zero gh exit raises RuntimeError."""
@@ -790,8 +793,6 @@ class TestOffboardUsersFromOrg:
         stale_users: list[dict] | None = None,
     ):
         """Context manager stack for the common happy-path patches."""
-        from contextlib import ExitStack
-
         stack = ExitStack()
         stack.enter_context(
             patch(
