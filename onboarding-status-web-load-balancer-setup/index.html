@@ -812,89 +812,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#resources-created" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Resources Created
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#maintenance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Maintenance
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Maintenance">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#redeploying-the-application" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Redeploying the Application
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#updating-load-balancer-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Updating Load Balancer Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#checking-resource-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checking Resource Status
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Notes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -1194,89 +1111,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#resources-created" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Resources Created
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#maintenance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Maintenance
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Maintenance">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#redeploying-the-application" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Redeploying the Application
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#updating-load-balancer-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Updating Load Balancer Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#checking-resource-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checking Resource Status
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Notes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -1318,117 +1152,117 @@
 <h2 id="step-1-configure-nextjs-base-path">Step 1: Configure Next.js Base Path<a class="headerlink" href="#step-1-configure-nextjs-base-path" title="Permanent link">&para;</a></h2>
 <p>Update the Next.js configuration to serve the app under the <code>/onboarding</code> path.</p>
 <p><strong>File:</strong> <code>services/onboarding-status-web/next.config.js</code></p>
-<div class="language-javascript highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="cm">/** @type {import(&#39;next&#39;).NextConfig} */</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kd">const</span><span class="w"> </span><span class="nx">nextConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nx">basePath</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;/onboarding&#39;</span><span class="p">,</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nx">output</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;standalone&#39;</span><span class="p">,</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nx">eslint</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="nx">ignoreDuringBuilds</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nx">typescript</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nx">ignoreBuildErrors</span><span class="o">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="p">}</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nx">module</span><span class="p">.</span><span class="nx">exports</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">nextConfig</span>
-</span></code></pre></div>
+<p>```javascript
+/*<em> @type {import('next').NextConfig} </em>/
+const nextConfig = {
+  basePath: '/onboarding',
+  output: 'standalone',
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+}</p>
+<p>module.exports = nextConfig
+```</p>
 <p><strong>Important:</strong> Update the API fetch path in the client code to use the absolute path:</p>
 <p><strong>File:</strong> <code>services/onboarding-status-web/app/page.tsx</code></p>
 <p>Change:
-<div class="language-javascript highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="s1">&#39;/api/participants&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-</span></code></pre></div></p>
+<code>javascript
+const response = await fetch('/api/participants', {</code></p>
 <p>To:
-<div class="language-javascript highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">const</span><span class="w"> </span><span class="nx">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="s1">&#39;/onboarding/api/participants&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-</span></code></pre></div></p>
+<code>javascript
+const response = await fetch('/onboarding/api/participants', {</code></p>
 <h2 id="step-2-create-serverless-network-endpoint-group-neg">Step 2: Create Serverless Network Endpoint Group (NEG)<a class="headerlink" href="#step-2-create-serverless-network-endpoint-group-neg" title="Permanent link">&para;</a></h2>
 <p>Create a serverless NEG that points to the Cloud Run service.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>network-endpoint-groups<span class="w"> </span>create<span class="w"> </span>onboarding-status-neg<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>--project<span class="o">=</span>coderd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>--region<span class="o">=</span>us-central1<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>--network-endpoint-type<span class="o">=</span>serverless<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>--cloud-run-service<span class="o">=</span>onboarding-status-web
-</span></code></pre></div>
+<p><code>bash
+gcloud compute network-endpoint-groups create onboarding-status-neg \
+  --project=coderd \
+  --region=us-central1 \
+  --network-endpoint-type=serverless \
+  --cloud-run-service=onboarding-status-web</code></p>
 <p><strong>Verification:</strong>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>network-endpoint-groups<span class="w"> </span>describe<span class="w"> </span>onboarding-status-neg<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--project<span class="o">=</span>coderd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--region<span class="o">=</span>us-central1
-</span></code></pre></div></p>
+<code>bash
+gcloud compute network-endpoint-groups describe onboarding-status-neg \
+  --project=coderd \
+  --region=us-central1</code></p>
 <h2 id="step-3-create-backend-service">Step 3: Create Backend Service<a class="headerlink" href="#step-3-create-backend-service" title="Permanent link">&para;</a></h2>
 <p>Create a backend service for the onboarding dashboard.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>backend-services<span class="w"> </span>create<span class="w"> </span>onboarding-backend<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--project<span class="o">=</span>coderd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>--global<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span>--load-balancing-scheme<span class="o">=</span>EXTERNAL_MANAGED
-</span></code></pre></div>
+<p><code>bash
+gcloud compute backend-services create onboarding-backend \
+  --project=coderd \
+  --global \
+  --load-balancing-scheme=EXTERNAL_MANAGED</code></p>
 <p><strong>Verification:</strong>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>backend-services<span class="w"> </span>describe<span class="w"> </span>onboarding-backend<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>--project<span class="o">=</span>coderd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>--global
-</span></code></pre></div></p>
+<code>bash
+gcloud compute backend-services describe onboarding-backend \
+  --project=coderd \
+  --global</code></p>
 <h2 id="step-4-add-neg-to-backend-service">Step 4: Add NEG to Backend Service<a class="headerlink" href="#step-4-add-neg-to-backend-service" title="Permanent link">&para;</a></h2>
 <p>Connect the serverless NEG to the backend service.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>backend-services<span class="w"> </span>add-backend<span class="w"> </span>onboarding-backend<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--project<span class="o">=</span>coderd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>--global<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span>--network-endpoint-group<span class="o">=</span>onboarding-status-neg<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span>--network-endpoint-group-region<span class="o">=</span>us-central1
-</span></code></pre></div>
+<p><code>bash
+gcloud compute backend-services add-backend onboarding-backend \
+  --project=coderd \
+  --global \
+  --network-endpoint-group=onboarding-status-neg \
+  --network-endpoint-group-region=us-central1</code></p>
 <p><strong>Verification:</strong>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>backend-services<span class="w"> </span>describe<span class="w"> </span>onboarding-backend<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--project<span class="o">=</span>coderd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--global<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--format<span class="o">=</span><span class="s2">&quot;yaml(name,backends)&quot;</span>
-</span></code></pre></div></p>
+<code>bash
+gcloud compute backend-services describe onboarding-backend \
+  --project=coderd \
+  --global \
+  --format="yaml(name,backends)"</code></p>
 <h2 id="step-5-backup-current-url-map">Step 5: Backup Current URL Map<a class="headerlink" href="#step-5-backup-current-url-map" title="Permanent link">&para;</a></h2>
 <p>Before making changes, backup the existing URL map configuration.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>url-maps<span class="w"> </span><span class="nb">export</span><span class="w"> </span>https-url-map<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--project<span class="o">=</span>coderd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--destination<span class="o">=</span>url-map-backup-<span class="k">$(</span>date<span class="w"> </span>+%Y%m%d<span class="k">)</span>.yaml
-</span></code></pre></div>
+<p><code>bash
+gcloud compute url-maps export https-url-map \
+  --project=coderd \
+  --destination=url-map-backup-$(date +%Y%m%d).yaml</code></p>
 <h2 id="step-6-update-url-map-with-path-based-routing">Step 6: Update URL Map with Path-Based Routing<a class="headerlink" href="#step-6-update-url-map-with-path-based-routing" title="Permanent link">&para;</a></h2>
 <p>Add path matcher rules to route <code>/onboarding</code> traffic to the Cloud Run backend.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>url-maps<span class="w"> </span>add-path-matcher<span class="w"> </span>https-url-map<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>--project<span class="o">=</span>coderd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>--path-matcher-name<span class="o">=</span>onboarding-matcher<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span>--default-service<span class="o">=</span>coderd-backend<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span>--path-rules<span class="o">=</span><span class="s2">&quot;/onboarding=onboarding-backend,/onboarding/*=onboarding-backend&quot;</span>
-</span></code></pre></div>
+<p><code>bash
+gcloud compute url-maps add-path-matcher https-url-map \
+  --project=coderd \
+  --path-matcher-name=onboarding-matcher \
+  --default-service=coderd-backend \
+  --path-rules="/onboarding=onboarding-backend,/onboarding/*=onboarding-backend"</code></p>
 <p><strong>Verification:</strong>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>url-maps<span class="w"> </span>describe<span class="w"> </span>https-url-map<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>--project<span class="o">=</span>coderd
-</span></code></pre></div></p>
+<code>bash
+gcloud compute url-maps describe https-url-map \
+  --project=coderd</code></p>
 <p>Expected output should show:
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nt">defaultService</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.../coderd-backend</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="nt">hostRules</span><span class="p">:</span>
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">hosts</span><span class="p">:</span>
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;*&#39;</span>
-</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">  </span><span class="nt">pathMatcher</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">onboarding-matcher</span>
-</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="nt">pathMatchers</span><span class="p">:</span>
-</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">defaultService</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.../coderd-backend</span>
-</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">onboarding-matcher</span>
-</span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="w">  </span><span class="nt">pathRules</span><span class="p">:</span>
-</span><span id="__span-12-10"><a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">paths</span><span class="p">:</span>
-</span><span id="__span-12-11"><a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/onboarding</span>
-</span><span id="__span-12-12"><a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/onboarding/*</span>
-</span><span id="__span-12-13"><a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="w">    </span><span class="nt">service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.../onboarding-backend</span>
-</span></code></pre></div></p>
+<code>yaml
+defaultService: .../coderd-backend
+hostRules:
+- hosts:
+  - '*'
+  pathMatcher: onboarding-matcher
+pathMatchers:
+- defaultService: .../coderd-backend
+  name: onboarding-matcher
+  pathRules:
+  - paths:
+    - /onboarding
+    - /onboarding/*
+    service: .../onboarding-backend</code></p>
 <h2 id="step-7-deploy-updated-nextjs-application">Step 7: Deploy Updated Next.js Application<a class="headerlink" href="#step-7-deploy-updated-nextjs-application" title="Permanent link">&para;</a></h2>
 <p>Deploy the updated application with the basePath configuration.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>./scripts/admin/deploy_onboarding_status_web.sh
-</span></code></pre></div>
+<p><code>bash
+./scripts/admin/deploy_onboarding_status_web.sh</code></p>
 <h2 id="step-8-verify-and-test">Step 8: Verify and Test<a class="headerlink" href="#step-8-verify-and-test" title="Permanent link">&para;</a></h2>
 <p>Wait 5-10 minutes for the load balancer configuration to propagate across Google's network.</p>
 <h3 id="test-coder-platform-unchanged">Test Coder Platform (unchanged)<a class="headerlink" href="#test-coder-platform-unchanged" title="Permanent link">&para;</a></h3>
-<p><div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>curl<span class="w"> </span>-I<span class="w"> </span>https://platform.vectorinstitute.ai/
-</span></code></pre></div>
+<p><code>bash
+curl -I https://platform.vectorinstitute.ai/</code>
 Expected: HTTP 200 with Coder server headers</p>
 <h3 id="test-onboarding-dashboard">Test Onboarding Dashboard<a class="headerlink" href="#test-onboarding-dashboard" title="Permanent link">&para;</a></h3>
-<p><div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>curl<span class="w"> </span>-I<span class="w"> </span>https://platform.vectorinstitute.ai/onboarding
-</span></code></pre></div>
+<p><code>bash
+curl -I https://platform.vectorinstitute.ai/onboarding</code>
 Expected: HTTP 200 with Next.js headers</p>
 <h3 id="test-onboarding-api">Test Onboarding API<a class="headerlink" href="#test-onboarding-api" title="Permanent link">&para;</a></h3>
-<p><div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>https://platform.vectorinstitute.ai/onboarding/api/participants<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.summary&#39;</span>
-</span></code></pre></div>
+<p><code>bash
+curl -s https://platform.vectorinstitute.ai/onboarding/api/participants | jq '.summary'</code>
 Expected: JSON response with participant summary</p>
 <h3 id="browser-test">Browser Test<a class="headerlink" href="#browser-test" title="Permanent link">&para;</a></h3>
 <p>Open <code>https://platform.vectorinstitute.ai/onboarding</code> in a browser. You should see:
@@ -1455,17 +1289,17 @@ Expected: JSON response with participant summary</p>
 3. Clear browser cache</p>
 <h3 id="rollback-procedure">Rollback Procedure<a class="headerlink" href="#rollback-procedure" title="Permanent link">&para;</a></h3>
 <p>If you need to rollback the URL map changes:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Remove the path matcher</span>
-</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>url-maps<span class="w"> </span>remove-path-matcher<span class="w"> </span>https-url-map<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">  </span>--project<span class="o">=</span>coderd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">  </span>--path-matcher-name<span class="o">=</span>onboarding-matcher
-</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>
-</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="c1"># Or restore from backup</span>
-</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>url-maps<span class="w"> </span>import<span class="w"> </span>https-url-map<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="w">  </span>--project<span class="o">=</span>coderd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="w">  </span>--source<span class="o">=</span>url-map-backup-YYYYMMDD.yaml<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="w">  </span>--global
-</span></code></pre></div>
+<p>```bash</p>
+<h1 id="remove-the-path-matcher">Remove the path matcher<a class="headerlink" href="#remove-the-path-matcher" title="Permanent link">&para;</a></h1>
+<p>gcloud compute url-maps remove-path-matcher https-url-map \
+  --project=coderd \
+  --path-matcher-name=onboarding-matcher</p>
+<h1 id="or-restore-from-backup">Or restore from backup<a class="headerlink" href="#or-restore-from-backup" title="Permanent link">&para;</a></h1>
+<p>gcloud compute url-maps import https-url-map \
+  --project=coderd \
+  --source=url-map-backup-YYYYMMDD.yaml \
+  --global
+```</p>
 <h2 id="resources-created">Resources Created<a class="headerlink" href="#resources-created" title="Permanent link">&para;</a></h2>
 <p>This setup creates the following GCP resources:</p>
 <table>
@@ -1497,33 +1331,33 @@ Expected: JSON response with participant summary</p>
 <h2 id="maintenance">Maintenance<a class="headerlink" href="#maintenance" title="Permanent link">&para;</a></h2>
 <h3 id="redeploying-the-application">Redeploying the Application<a class="headerlink" href="#redeploying-the-application" title="Permanent link">&para;</a></h3>
 <p>To redeploy with code changes:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1"># Make your code changes, then deploy</span>
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>./scripts/admin/deploy_onboarding_status_web.sh
-</span></code></pre></div>
+<p>```bash</p>
+<h1 id="make-your-code-changes-then-deploy">Make your code changes, then deploy<a class="headerlink" href="#make-your-code-changes-then-deploy" title="Permanent link">&para;</a></h1>
+<p>./scripts/admin/deploy_onboarding_status_web.sh
+```</p>
 <p>The load balancer configuration remains intact and doesn't need to be reconfigured.</p>
 <h3 id="updating-load-balancer-configuration">Updating Load Balancer Configuration<a class="headerlink" href="#updating-load-balancer-configuration" title="Permanent link">&para;</a></h3>
 <p>If you need to modify the path rules:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># Export current config</span>
-</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>url-maps<span class="w"> </span><span class="nb">export</span><span class="w"> </span>https-url-map<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">  </span>--project<span class="o">=</span>coderd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">  </span>--destination<span class="o">=</span>url-map-current.yaml
-</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>
-</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="c1"># Edit url-map-current.yaml, then import</span>
-</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>url-maps<span class="w"> </span>import<span class="w"> </span>https-url-map<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="w">  </span>--project<span class="o">=</span>coderd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="w">  </span>--source<span class="o">=</span>url-map-current.yaml<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="w">  </span>--global
-</span></code></pre></div>
+<p>```bash</p>
+<h1 id="export-current-config">Export current config<a class="headerlink" href="#export-current-config" title="Permanent link">&para;</a></h1>
+<p>gcloud compute url-maps export https-url-map \
+  --project=coderd \
+  --destination=url-map-current.yaml</p>
+<h1 id="edit-url-map-currentyaml-then-import">Edit url-map-current.yaml, then import<a class="headerlink" href="#edit-url-map-currentyaml-then-import" title="Permanent link">&para;</a></h1>
+<p>gcloud compute url-maps import https-url-map \
+  --project=coderd \
+  --source=url-map-current.yaml \
+  --global
+```</p>
 <h3 id="checking-resource-status">Checking Resource Status<a class="headerlink" href="#checking-resource-status" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c1"># List all backend services</span>
-</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>backend-services<span class="w"> </span>list<span class="w"> </span>--project<span class="o">=</span>coderd
-</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
-</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="c1"># List all NEGs</span>
-</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>network-endpoint-groups<span class="w"> </span>list<span class="w"> </span>--project<span class="o">=</span>coderd
-</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>
-</span><span id="__span-20-7"><a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="c1"># View URL map configuration</span>
-</span><span id="__span-20-8"><a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>gcloud<span class="w"> </span>compute<span class="w"> </span>url-maps<span class="w"> </span>describe<span class="w"> </span>https-url-map<span class="w"> </span>--project<span class="o">=</span>coderd
-</span></code></pre></div>
+<p>```bash</p>
+<h1 id="list-all-backend-services">List all backend services<a class="headerlink" href="#list-all-backend-services" title="Permanent link">&para;</a></h1>
+<p>gcloud compute backend-services list --project=coderd</p>
+<h1 id="list-all-negs">List all NEGs<a class="headerlink" href="#list-all-negs" title="Permanent link">&para;</a></h1>
+<p>gcloud compute network-endpoint-groups list --project=coderd</p>
+<h1 id="view-url-map-configuration">View URL map configuration<a class="headerlink" href="#view-url-map-configuration" title="Permanent link">&para;</a></h1>
+<p>gcloud compute url-maps describe https-url-map --project=coderd
+```</p>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>No Downtime:</strong> The load balancer update is non-disruptive. Existing traffic continues to flow during configuration changes.</li>

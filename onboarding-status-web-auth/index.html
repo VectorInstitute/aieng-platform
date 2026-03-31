@@ -711,78 +711,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#local-development" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Local Development
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#production-deployment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Production Deployment
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Production Deployment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#required-github-secrets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Required GitHub Secrets
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#setup-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Setup Steps
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dependencies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dependencies
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -927,78 +855,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#local-development" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Local Development
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#production-deployment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Production Deployment
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Production Deployment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#required-github-secrets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Required GitHub Secrets
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#setup-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Setup Steps
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dependencies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dependencies
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -1057,18 +913,17 @@
 <li><code>app/dashboard-content.tsx</code> - Dashboard UI</li>
 </ul>
 <h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># OAuth</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nv">NEXT_PUBLIC_GOOGLE_CLIENT_ID</span><span class="o">=</span>your-client-id.apps.googleusercontent.com
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nv">GOOGLE_CLIENT_SECRET</span><span class="o">=</span>GOCSPX-your-secret
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nv">SESSION_SECRET</span><span class="o">=</span>generate-with-openssl-rand-base64-32
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># URLs</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="nv">NEXT_PUBLIC_APP_URL</span><span class="o">=</span>http://localhost:3000
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="nv">REDIRECT_URI</span><span class="o">=</span>http://localhost:3000/onboarding/api/auth/callback
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># Domain restriction</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="nv">ALLOWED_DOMAINS</span><span class="o">=</span>vectorinstitute.ai
-</span></code></pre></div>
+<p>```bash</p>
+<h1 id="oauth">OAuth<a class="headerlink" href="#oauth" title="Permanent link">&para;</a></h1>
+<p>NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-your-secret
+SESSION_SECRET=generate-with-openssl-rand-base64-32</p>
+<h1 id="urls">URLs<a class="headerlink" href="#urls" title="Permanent link">&para;</a></h1>
+<p>NEXT_PUBLIC_APP_URL=http://localhost:3000
+REDIRECT_URI=http://localhost:3000/onboarding/api/auth/callback</p>
+<h1 id="domain-restriction">Domain restriction<a class="headerlink" href="#domain-restriction" title="Permanent link">&para;</a></h1>
+<p>ALLOWED_DOMAINS=vectorinstitute.ai
+```</p>
 <h2 id="local-development">Local Development<a class="headerlink" href="#local-development" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Copy OAuth credentials from <code>aieng-template-auth/apps/demo-nextjs/.env</code></li>
@@ -1104,11 +959,11 @@
 - Verify <code>SESSION_SECRET</code> is at least 32 characters
 - Clear browser cookies</p>
 <h2 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">&para;</a></h2>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">&quot;@vector-institute/aieng-auth-core&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^0.1.x&quot;</span><span class="p">,</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">&quot;iron-session&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;^8.0.1&quot;</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="p">}</span>
-</span></code></pre></div>
+<p><code>json
+{
+  "@vector-institute/aieng-auth-core": "^0.1.x",
+  "iron-session": "^8.0.1"
+}</code></p>
 
 
 
