@@ -3,7 +3,7 @@
 import json
 import subprocess
 from typing import Any
-from unittest.mock import Mock, call, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -100,12 +100,14 @@ class TestFetchGithubOrgMembers:
 
     def test_api_failure_raises(self) -> None:
         """Non-zero gh exit raises RuntimeError."""
-        with patch(
-            "subprocess.run",
-            side_effect=subprocess.CalledProcessError(1, "gh", stderr="not found"),
+        with (
+            patch(
+                "subprocess.run",
+                side_effect=subprocess.CalledProcessError(1, "gh", stderr="not found"),
+            ),
+            pytest.raises(RuntimeError, match="Failed to fetch GitHub org members"),
         ):
-            with pytest.raises(RuntimeError, match="Failed to fetch GitHub org members"):
-                fetch_github_org_members("my-org")
+            fetch_github_org_members("my-org")
 
     def test_invalid_json_raises(self) -> None:
         """Malformed JSON response raises RuntimeError."""
@@ -155,12 +157,14 @@ class TestFetchCoderUsers:
 
     def test_command_failure_propagates(self) -> None:
         """RuntimeError from run_coder_command propagates."""
-        with patch(
-            "aieng_platform_onboard.admin.offboard_users.run_coder_command",
-            side_effect=RuntimeError("CLI error"),
+        with (
+            patch(
+                "aieng_platform_onboard.admin.offboard_users.run_coder_command",
+                side_effect=RuntimeError("CLI error"),
+            ),
+            pytest.raises(RuntimeError),
         ):
-            with pytest.raises(RuntimeError):
-                fetch_coder_users()
+            fetch_coder_users()
 
 
 # ---------------------------------------------------------------------------
@@ -462,9 +466,7 @@ class TestOffboardUser:
                 "aieng_platform_onboard.admin.offboard_users.get_firestore_client",
                 return_value=Mock(),
             ),
-            patch(
-                "aieng_platform_onboard.admin.offboard_users.delete_participants"
-            ),
+            patch("aieng_platform_onboard.admin.offboard_users.delete_participants"),
         ):
             offboard_user(user, suspend=True, dry_run=True)
 
@@ -487,9 +489,7 @@ class TestOffboardUser:
                 "aieng_platform_onboard.admin.offboard_users.get_firestore_client",
                 return_value=Mock(),
             ),
-            patch(
-                "aieng_platform_onboard.admin.offboard_users.delete_participants"
-            ),
+            patch("aieng_platform_onboard.admin.offboard_users.delete_participants"),
         ):
             offboard_user(user, skip_workspaces=True, dry_run=True)
 
@@ -539,9 +539,7 @@ class TestOffboardUser:
                 "aieng_platform_onboard.admin.offboard_users.get_firestore_client",
                 return_value=Mock(),
             ),
-            patch(
-                "aieng_platform_onboard.admin.offboard_users.delete_participants"
-            ),
+            patch("aieng_platform_onboard.admin.offboard_users.delete_participants"),
         ):
             result = offboard_user(user)
 
@@ -564,9 +562,7 @@ class TestOffboardUser:
                 "aieng_platform_onboard.admin.offboard_users.get_firestore_client",
                 return_value=Mock(),
             ),
-            patch(
-                "aieng_platform_onboard.admin.offboard_users.delete_participants"
-            ),
+            patch("aieng_platform_onboard.admin.offboard_users.delete_participants"),
         ):
             result = offboard_user(user)
 
@@ -616,9 +612,7 @@ class TestOffboardUser:
                 "aieng_platform_onboard.admin.offboard_users.get_firestore_client",
                 return_value=Mock(),
             ),
-            patch(
-                "aieng_platform_onboard.admin.offboard_users.delete_participants"
-            ),
+            patch("aieng_platform_onboard.admin.offboard_users.delete_participants"),
         ):
             offboard_user(user, orphan=True)
 
@@ -651,9 +645,7 @@ class TestOffboardUser:
                 "aieng_platform_onboard.admin.offboard_users.get_firestore_client",
                 return_value=Mock(),
             ),
-            patch(
-                "aieng_platform_onboard.admin.offboard_users.delete_participants"
-            ),
+            patch("aieng_platform_onboard.admin.offboard_users.delete_participants"),
         ):
             result = offboard_user(user)
 
@@ -925,7 +917,9 @@ class TestOffboardUsersFromOrg:
 
         with (
             self._base_patches([], set(), stale_users=stale),
-            patch("aieng_platform_onboard.admin.offboard_users.offboard_users") as mock_ob,
+            patch(
+                "aieng_platform_onboard.admin.offboard_users.offboard_users"
+            ) as mock_ob,
         ):
             result = offboard_users_from_org("my-org", dry_run=False)
 

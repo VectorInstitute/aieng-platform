@@ -989,9 +989,7 @@ class TestOffboardUsersCommand:
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
     ) -> None:
         """Test offboard-users help message."""
-        monkeypatch.setattr(
-            "sys.argv", ["onboard admin", "offboard-users", "--help"]
-        )
+        monkeypatch.setattr("sys.argv", ["onboard admin", "offboard-users", "--help"])
 
         with pytest.raises(SystemExit) as exc_info:
             main()

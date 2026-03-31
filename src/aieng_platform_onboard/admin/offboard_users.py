@@ -169,9 +169,7 @@ def suspend_coder_user(username: str, dry_run: bool = False) -> bool:
             console.print(f"  [green]✓[/green] Suspended Coder user '{username}'")
             return True
         error_msg = result.stderr.strip() or result.stdout.strip() or "Unknown error"
-        console.print(
-            f"  [red]✗[/red] Failed to suspend '{username}': {error_msg}"
-        )
+        console.print(f"  [red]✗[/red] Failed to suspend '{username}': {error_msg}")
         return False
     except RuntimeError as e:
         console.print(f"  [red]✗[/red] Failed to suspend '{username}': {e}")
@@ -199,16 +197,12 @@ def delete_coder_user(username: str, dry_run: bool = False) -> bool:
         return True
 
     try:
-        result = run_coder_command(
-            ["users", "delete", username], check=False
-        )
+        result = run_coder_command(["users", "delete", username], check=False)
         if result.returncode == 0:
             console.print(f"  [green]✓[/green] Deleted Coder user '{username}'")
             return True
         error_msg = result.stderr.strip() or result.stdout.strip() or "Unknown error"
-        console.print(
-            f"  [red]✗[/red] Failed to delete '{username}': {error_msg}"
-        )
+        console.print(f"  [red]✗[/red] Failed to delete '{username}': {error_msg}")
         return False
     except RuntimeError as e:
         console.print(f"  [red]✗[/red] Failed to delete '{username}': {e}")
@@ -231,7 +225,14 @@ def fetch_user_workspaces(username: str) -> list[dict[str, Any]]:
     """
     try:
         result = run_coder_command(
-            ["list", "--all-users", "--output", "json", "--search", f"owner:{username}"],
+            [
+                "list",
+                "--all-users",
+                "--output",
+                "json",
+                "--search",
+                f"owner:{username}",
+            ],
             check=False,
         )
         if result.returncode != 0 or not result.stdout.strip():
@@ -338,9 +339,7 @@ def offboard_user(
     return success
 
 
-def display_stale_users_table(
-    stale_users: list[dict[str, Any]], org: str
-) -> None:
+def display_stale_users_table(stale_users: list[dict[str, Any]], org: str) -> None:
     """
     Display a summary table of Coder users to be offboarded.
 
@@ -420,9 +419,7 @@ def offboard_users(
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-        task = progress.add_task(
-            "[cyan]Offboarding users...", total=len(stale_users)
-        )
+        task = progress.add_task("[cyan]Offboarding users...", total=len(stale_users))
 
         for user in stale_users:
             console.print(f"\n[bold]Offboarding:[/bold] {user['username']}")
@@ -494,9 +491,7 @@ def offboard_users_from_org(  # noqa: PLR0911
     try:
         result = run_coder_command(["version"], check=False)
         if result.returncode != 0:
-            console.print(
-                f"[red]✗[/red] Coder CLI not working: {result.stderr}"
-            )
+            console.print(f"[red]✗[/red] Coder CLI not working: {result.stderr}")
             return 1
         console.print(f"[green]✓[/green] Coder CLI: {result.stdout.strip()}")
     except RuntimeError as e:
