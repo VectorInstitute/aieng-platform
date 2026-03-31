@@ -33,9 +33,9 @@ The `coder` folder contains all resources needed to deploy a [Coder](https://cod
 
 ### Usage
 
-1. **Provision Coder on GCP** - Follow the steps in [`coder/deploy/README.md`](coder/deploy/README.md)
-2. **Build and Push Docker Images** - See [`coder/docker/README.md`](coder/docker/README.md)
-3. **Push Workspace Templates** - See [`coder/templates/README.md`](coder/templates/README.md)
+1. **Provision Coder on GCP** - Follow the steps in `coder/deploy/README.md`
+2. **Build and Push Docker Images** - See `coder/docker/README.md`
+3. **Push Workspace Templates** - See `coder/templates/README.md`
 
 ---
 

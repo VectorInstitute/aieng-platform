@@ -41,7 +41,7 @@ terraform plan
 terraform apply
 ```
 
-For detailed instructions, see [`coder/deploy/README.md`](../coder/deploy/README.md).
+For detailed instructions, see `coder/deploy/README.md` in the repository.
 
 ### Onboarding Status Web Dashboard
 
