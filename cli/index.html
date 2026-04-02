@@ -915,6 +915,37 @@ pip install aieng-platform-onboard</code></p>
 <li><strong><code>onboard</code></strong> - Participant onboarding with team-specific API keys</li>
 <li><strong><code>onboard admin</code></strong> - Admin commands for managing participants and teams</li>
 </ul>
+<p>Admin subcommands:</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>setup-participants</code></td>
+<td>Load participants and teams from a CSV into Firestore</td>
+</tr>
+<tr>
+<td><code>delete-participants</code></td>
+<td>Remove participants (and optionally empty teams) from Firestore</td>
+</tr>
+<tr>
+<td><code>delete-workspaces</code></td>
+<td>Delete Coder workspaces and associated GCP resources by date</td>
+</tr>
+<tr>
+<td><code>offboard-users</code></td>
+<td>Remove Coder users who are no longer in the GitHub org</td>
+</tr>
+<tr>
+<td><code>create-gemini-keys</code></td>
+<td>Provision Gemini API keys for teams in GCP</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="participant-onboarding">Participant Onboarding<a class="headerlink" href="#participant-onboarding" title="Permanent link">&para;</a></h2>
 <p>Main command for onboarding bootcamp participants with team-specific API keys.</p>
@@ -1228,12 +1259,184 @@ onboard admin create-gemini-keys \
 <li><strong>Audit Trail</strong>: Logs all created key resource names for manual review</li>
 </ul>
 <hr />
-<h3 id="onboard-admin-delete-participants"><code>onboard admin delete-participants</code><a class="headerlink" href="#onboard-admin-delete-participants" title="Permanent link">&para;</a></h3>
-<p>Delete participants from Firestore database. Can optionally remove empty teams after participant deletion.</p>
+<h3 id="onboard-admin-delete-workspaces"><code>onboard admin delete-workspaces</code><a class="headerlink" href="#onboard-admin-delete-workspaces" title="Permanent link">&para;</a></h3>
+<p>Delete Coder workspaces (and their associated GCP resources) created before a given date. By default, Coder triggers a Terraform destroy to clean up the underlying VM and persistent disk. Failed Terraform runs can be retried automatically in orphan mode.</p>
 <h4 id="usage_3">Usage<a class="headerlink" href="#usage_3" title="Permanent link">&para;</a></h4>
 <p><code>bash
-onboard admin delete-participants &lt;csv_file&gt; [OPTIONS]</code></p>
+onboard admin delete-workspaces --before &lt;YYYY-MM-DD&gt; [OPTIONS]</code></p>
 <h4 id="arguments_2">Arguments<a class="headerlink" href="#arguments_2" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Description</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--before</code></td>
+<td>Delete workspaces created before this date (YYYY-MM-DD)</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h4 id="options_3">Options<a class="headerlink" href="#options_3" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Show what would be deleted without making changes</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>--orphan</code></td>
+<td>Delete workspace records without running Terraform destroy (skips GCP cleanup)</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>--no-auto-orphan</code></td>
+<td>Disable automatic retry with <code>--orphan</code> when Terraform fails</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="examples_3">Examples<a class="headerlink" href="#examples_3" title="Permanent link">&para;</a></h4>
+<p><strong>Preview workspaces that would be deleted:</strong>
+<code>bash
+onboard admin delete-workspaces --before 2025-01-01 --dry-run</code></p>
+<p><strong>Delete all workspaces from before a date:</strong>
+<code>bash
+onboard admin delete-workspaces --before 2025-01-01</code></p>
+<p><strong>Skip Terraform destroy (e.g. if workspace state is broken):</strong>
+<code>bash
+onboard admin delete-workspaces --before 2025-01-01 --orphan</code></p>
+<p><strong>Disable auto-orphan fallback:</strong>
+<code>bash
+onboard admin delete-workspaces --before 2025-01-01 --no-auto-orphan</code></p>
+<h4 id="requirements_2">Requirements<a class="headerlink" href="#requirements_2" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Coder CLI installed and authenticated (<code>coder login</code>)</li>
+<li>Admin role in the Coder deployment</li>
+</ul>
+<hr />
+<h3 id="onboard-admin-offboard-users"><code>onboard admin offboard-users</code><a class="headerlink" href="#onboard-admin-offboard-users" title="Permanent link">&para;</a></h3>
+<p>Offboard Coder users who are no longer members of the GitHub organization. Users authenticate to Coder via GitHub OAuth, but removing someone from the GitHub org does <strong>not</strong> automatically clean up their Coder account. This command identifies the gap and closes it.</p>
+<p>For each stale user the command:</p>
+<ol>
+<li>Deletes (or orphans) all their Coder workspaces</li>
+<li>Suspends or deletes their Coder account</li>
+<li>Removes them from the Firestore onboarding database</li>
+</ol>
+<p>Coder deployment owners are always skipped regardless of org membership.</p>
+<h4 id="usage_4">Usage<a class="headerlink" href="#usage_4" title="Permanent link">&para;</a></h4>
+<p><code>bash
+onboard admin offboard-users --org &lt;github-org&gt; [OPTIONS]</code></p>
+<h4 id="arguments_3">Arguments<a class="headerlink" href="#arguments_3" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Description</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--org</code></td>
+<td>GitHub organization slug to check membership against</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h4 id="options_4">Options<a class="headerlink" href="#options_4" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Show what would be done without making any changes</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>--suspend</code></td>
+<td>Suspend Coder accounts instead of deleting them (reversible)</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>--skip-workspaces</code></td>
+<td>Skip workspace deletion (Coder account and Firestore still cleaned up)</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>--skip-firestore</code></td>
+<td>Skip Firestore onboarding database cleanup</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>--orphan</code></td>
+<td>Delete workspaces without running Terraform destroy</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>--no-auto-orphan</code></td>
+<td>Disable automatic retry with <code>--orphan</code> when Terraform fails</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="examples_4">Examples<a class="headerlink" href="#examples_4" title="Permanent link">&para;</a></h4>
+<p><strong>Preview who would be offboarded:</strong>
+<code>bash
+onboard admin offboard-users --org AI-Engineering-Platform --dry-run</code></p>
+<p><strong>Suspend accounts (safer, reversible) instead of deleting:</strong>
+<code>bash
+onboard admin offboard-users --org AI-Engineering-Platform --suspend</code></p>
+<p><strong>Full hard delete (workspaces + Coder account + Firestore):</strong>
+<code>bash
+onboard admin offboard-users --org AI-Engineering-Platform</code></p>
+<p><strong>Skip Firestore cleanup (e.g. already cleaned up manually):</strong>
+<code>bash
+onboard admin offboard-users --org AI-Engineering-Platform --skip-firestore</code></p>
+<p><strong>Force-orphan all workspace deletions (if Terraform is unreliable):</strong>
+<code>bash
+onboard admin offboard-users --org AI-Engineering-Platform --orphan</code></p>
+<h4 id="requirements_3">Requirements<a class="headerlink" href="#requirements_3" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>gh</code> CLI installed and authenticated (<code>gh auth login</code>)</li>
+<li>Coder CLI installed and authenticated (<code>coder login</code>)</li>
+<li>Admin role in the Coder deployment</li>
+<li>Admin credentials for Firestore (unless <code>--skip-firestore</code>)</li>
+</ul>
+<h4 id="recommended-workflow">Recommended workflow<a class="headerlink" href="#recommended-workflow" title="Permanent link">&para;</a></h4>
+<p>```bash</p>
+<h1 id="1-always-preview-first">1. Always preview first<a class="headerlink" href="#1-always-preview-first" title="Permanent link">&para;</a></h1>
+<p>onboard admin offboard-users --org AI-Engineering-Platform --dry-run</p>
+<h1 id="2-run-with-suspend-to-verify-before-committing-to-deletion">2. Run with --suspend to verify before committing to deletion<a class="headerlink" href="#2-run-with-suspend-to-verify-before-committing-to-deletion" title="Permanent link">&para;</a></h1>
+<p>onboard admin offboard-users --org AI-Engineering-Platform --suspend</p>
+<h1 id="3-once-confident-run-the-full-delete">3. Once confident, run the full delete<a class="headerlink" href="#3-once-confident-run-the-full-delete" title="Permanent link">&para;</a></h1>
+<p>onboard admin offboard-users --org AI-Engineering-Platform
+```</p>
+<hr />
+<h3 id="onboard-admin-delete-participants"><code>onboard admin delete-participants</code><a class="headerlink" href="#onboard-admin-delete-participants" title="Permanent link">&para;</a></h3>
+<p>Delete participants from Firestore database. Can optionally remove empty teams after participant deletion.</p>
+<h4 id="usage_5">Usage<a class="headerlink" href="#usage_5" title="Permanent link">&para;</a></h4>
+<p><code>bash
+onboard admin delete-participants &lt;csv_file&gt; [OPTIONS]</code></p>
+<h4 id="arguments_4">Arguments<a class="headerlink" href="#arguments_4" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
@@ -1258,7 +1461,7 @@ onboard admin delete-participants &lt;csv_file&gt; [OPTIONS]</code></p>
 github_handle
 alice
 bob</code></p>
-<h4 id="options_3">Options<a class="headerlink" href="#options_3" title="Permanent link">&para;</a></h4>
+<h4 id="options_5">Options<a class="headerlink" href="#options_5" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
@@ -1280,7 +1483,7 @@ bob</code></p>
 </tr>
 </tbody>
 </table>
-<h4 id="examples_3">Examples<a class="headerlink" href="#examples_3" title="Permanent link">&para;</a></h4>
+<h4 id="examples_5">Examples<a class="headerlink" href="#examples_5" title="Permanent link">&para;</a></h4>
 <p><strong>Delete participants from CSV:</strong>
 <code>bash
 onboard admin delete-participants config/to_remove.csv</code></p>
@@ -1290,7 +1493,7 @@ onboard admin delete-participants config/to_remove.csv --dry-run</code></p>
 <p><strong>Delete participants but keep empty teams:</strong>
 <code>bash
 onboard admin delete-participants config/to_remove.csv --keep-empty-teams</code></p>
-<h4 id="requirements_2">Requirements<a class="headerlink" href="#requirements_2" title="Permanent link">&para;</a></h4>
+<h4 id="requirements_4">Requirements<a class="headerlink" href="#requirements_4" title="Permanent link">&para;</a></h4>
 <ul>
 <li>Admin credentials (service account or gcloud auth)</li>
 <li>Firestore write access</li>
