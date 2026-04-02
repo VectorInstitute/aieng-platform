@@ -15,6 +15,16 @@ The CLI provides two main commands:
 - **`onboard`** - Participant onboarding with team-specific API keys
 - **`onboard admin`** - Admin commands for managing participants and teams
 
+Admin subcommands:
+
+| Command | Description |
+|---------|-------------|
+| `setup-participants` | Load participants and teams from a CSV into Firestore |
+| `delete-participants` | Remove participants (and optionally empty teams) from Firestore |
+| `delete-workspaces` | Delete Coder workspaces and associated GCP resources by date |
+| `offboard-users` | Remove Coder users who are no longer in the GitHub org |
+| `create-gemini-keys` | Provision Gemini API keys for teams in GCP |
+
 ---
 
 ## Participant Onboarding
@@ -276,6 +286,143 @@ The command updates team documents with:
 - **Validation Failures**: Retries 3 times with exponential backoff
 - **Quota Exceeded**: Stops processing and provides clear error message
 - **Audit Trail**: Logs all created key resource names for manual review
+
+---
+
+### `onboard admin delete-workspaces`
+
+Delete Coder workspaces (and their associated GCP resources) created before a given date. By default, Coder triggers a Terraform destroy to clean up the underlying VM and persistent disk. Failed Terraform runs can be retried automatically in orphan mode.
+
+#### Usage
+
+```bash
+onboard admin delete-workspaces --before <YYYY-MM-DD> [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `--before` | Delete workspaces created before this date (YYYY-MM-DD) | Yes |
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--dry-run` | Show what would be deleted without making changes | `False` |
+| `--orphan` | Delete workspace records without running Terraform destroy (skips GCP cleanup) | `False` |
+| `--no-auto-orphan` | Disable automatic retry with `--orphan` when Terraform fails | `False` |
+
+#### Examples
+
+**Preview workspaces that would be deleted:**
+```bash
+onboard admin delete-workspaces --before 2025-01-01 --dry-run
+```
+
+**Delete all workspaces from before a date:**
+```bash
+onboard admin delete-workspaces --before 2025-01-01
+```
+
+**Skip Terraform destroy (e.g. if workspace state is broken):**
+```bash
+onboard admin delete-workspaces --before 2025-01-01 --orphan
+```
+
+**Disable auto-orphan fallback:**
+```bash
+onboard admin delete-workspaces --before 2025-01-01 --no-auto-orphan
+```
+
+#### Requirements
+
+- Coder CLI installed and authenticated (`coder login`)
+- Admin role in the Coder deployment
+
+---
+
+### `onboard admin offboard-users`
+
+Offboard Coder users who are no longer members of the GitHub organization. Users authenticate to Coder via GitHub OAuth, but removing someone from the GitHub org does **not** automatically clean up their Coder account. This command identifies the gap and closes it.
+
+For each stale user the command:
+
+1. Deletes (or orphans) all their Coder workspaces
+2. Suspends or deletes their Coder account
+3. Removes them from the Firestore onboarding database
+
+Coder deployment owners are always skipped regardless of org membership.
+
+#### Usage
+
+```bash
+onboard admin offboard-users --org <github-org> [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `--org` | GitHub organization slug to check membership against | Yes |
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--dry-run` | Show what would be done without making any changes | `False` |
+| `--suspend` | Suspend Coder accounts instead of deleting them (reversible) | `False` |
+| `--skip-workspaces` | Skip workspace deletion (Coder account and Firestore still cleaned up) | `False` |
+| `--skip-firestore` | Skip Firestore onboarding database cleanup | `False` |
+| `--orphan` | Delete workspaces without running Terraform destroy | `False` |
+| `--no-auto-orphan` | Disable automatic retry with `--orphan` when Terraform fails | `False` |
+
+#### Examples
+
+**Preview who would be offboarded:**
+```bash
+onboard admin offboard-users --org AI-Engineering-Platform --dry-run
+```
+
+**Suspend accounts (safer, reversible) instead of deleting:**
+```bash
+onboard admin offboard-users --org AI-Engineering-Platform --suspend
+```
+
+**Full hard delete (workspaces + Coder account + Firestore):**
+```bash
+onboard admin offboard-users --org AI-Engineering-Platform
+```
+
+**Skip Firestore cleanup (e.g. already cleaned up manually):**
+```bash
+onboard admin offboard-users --org AI-Engineering-Platform --skip-firestore
+```
+
+**Force-orphan all workspace deletions (if Terraform is unreliable):**
+```bash
+onboard admin offboard-users --org AI-Engineering-Platform --orphan
+```
+
+#### Requirements
+
+- `gh` CLI installed and authenticated (`gh auth login`)
+- Coder CLI installed and authenticated (`coder login`)
+- Admin role in the Coder deployment
+- Admin credentials for Firestore (unless `--skip-firestore`)
+
+#### Recommended workflow
+
+```bash
+# 1. Always preview first
+onboard admin offboard-users --org AI-Engineering-Platform --dry-run
+
+# 2. Run with --suspend to verify before committing to deletion
+onboard admin offboard-users --org AI-Engineering-Platform --suspend
+
+# 3. Once confident, run the full delete
+onboard admin offboard-users --org AI-Engineering-Platform
+```
 
 ---
 

@@ -12,6 +12,7 @@ from aieng_platform_onboard.admin.delete_participants import (
 from aieng_platform_onboard.admin.delete_workspaces import (
     delete_workspaces_before_date,
 )
+from aieng_platform_onboard.admin.offboard_users import offboard_users_from_org
 from aieng_platform_onboard.admin.setup_participants import (
     setup_participants_from_csv,
 )
@@ -105,6 +106,56 @@ def main() -> int:
         help="Disable automatic retry with --orphan when Terraform fails",
     )
 
+    # offboard-users subcommand
+    offboard_users_parser = subparsers.add_parser(
+        "offboard-users",
+        help="Offboard Coder users no longer in the GitHub org",
+        description=(
+            "Identify Coder users authenticated via GitHub who are no longer org "
+            "members, then clean up their workspaces, Coder accounts, and Firestore "
+            "onboarding records."
+        ),
+    )
+    offboard_users_parser.add_argument(
+        "--org",
+        type=str,
+        required=True,
+        help="GitHub organization slug to check membership against (e.g. VectorInstitute)",
+    )
+    offboard_users_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be done without making any changes",
+    )
+    offboard_users_parser.add_argument(
+        "--suspend",
+        action="store_true",
+        help=(
+            "Suspend Coder accounts instead of deleting them "
+            "(reversible; use when unsure)"
+        ),
+    )
+    offboard_users_parser.add_argument(
+        "--skip-workspaces",
+        action="store_true",
+        help="Skip workspace deletion (Coder account and Firestore still cleaned up)",
+    )
+    offboard_users_parser.add_argument(
+        "--skip-firestore",
+        action="store_true",
+        help="Skip Firestore onboarding database cleanup",
+    )
+    offboard_users_parser.add_argument(
+        "--orphan",
+        action="store_true",
+        help="Delete workspaces without running Terraform destroy (skips GCP cleanup)",
+    )
+    offboard_users_parser.add_argument(
+        "--no-auto-orphan",
+        action="store_true",
+        help="Disable automatic retry with --orphan when Terraform fails",
+    )
+
     # create-gemini-keys subcommand
     create_gemini_keys_parser = subparsers.add_parser(
         "create-gemini-keys",
@@ -158,6 +209,16 @@ def main() -> int:
     if args.command == "delete-workspaces":
         return delete_workspaces_before_date(
             before_date=args.before,
+            orphan=args.orphan,
+            auto_orphan_on_failure=not args.no_auto_orphan,
+            dry_run=args.dry_run,
+        )
+    if args.command == "offboard-users":
+        return offboard_users_from_org(
+            org=args.org,
+            suspend=args.suspend,
+            skip_workspaces=args.skip_workspaces,
+            skip_firestore=args.skip_firestore,
             orphan=args.orphan,
             auto_orphan_on_failure=not args.no_auto_orphan,
             dry_run=args.dry_run,

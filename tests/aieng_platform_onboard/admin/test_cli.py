@@ -767,6 +767,244 @@ class TestCreateGeminiKeysCommand:
         assert "--teams" in captured.out
 
 
+class TestOffboardUsersCommand:
+    """Tests for offboard-users CLI command."""
+
+    def test_offboard_users_basic(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test offboard-users command with required --org argument."""
+        monkeypatch.setattr(
+            "sys.argv",
+            ["onboard admin", "offboard-users", "--org", "my-org"],
+        )
+
+        with patch(
+            "aieng_platform_onboard.admin.cli.offboard_users_from_org",
+            return_value=0,
+        ) as mock_offboard:
+            exit_code = main()
+
+        assert exit_code == 0
+        mock_offboard.assert_called_once_with(
+            org="my-org",
+            suspend=False,
+            skip_workspaces=False,
+            skip_firestore=False,
+            orphan=False,
+            auto_orphan_on_failure=True,
+            dry_run=False,
+        )
+
+    def test_offboard_users_dry_run(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test offboard-users with --dry-run flag."""
+        monkeypatch.setattr(
+            "sys.argv",
+            ["onboard admin", "offboard-users", "--org", "my-org", "--dry-run"],
+        )
+
+        with patch(
+            "aieng_platform_onboard.admin.cli.offboard_users_from_org",
+            return_value=0,
+        ) as mock_offboard:
+            exit_code = main()
+
+        assert exit_code == 0
+        mock_offboard.assert_called_once_with(
+            org="my-org",
+            suspend=False,
+            skip_workspaces=False,
+            skip_firestore=False,
+            orphan=False,
+            auto_orphan_on_failure=True,
+            dry_run=True,
+        )
+
+    def test_offboard_users_suspend(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test offboard-users with --suspend flag."""
+        monkeypatch.setattr(
+            "sys.argv",
+            ["onboard admin", "offboard-users", "--org", "my-org", "--suspend"],
+        )
+
+        with patch(
+            "aieng_platform_onboard.admin.cli.offboard_users_from_org",
+            return_value=0,
+        ) as mock_offboard:
+            main()
+
+        _, kwargs = mock_offboard.call_args
+        assert kwargs["suspend"] is True
+
+    def test_offboard_users_skip_workspaces(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test offboard-users with --skip-workspaces flag."""
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "onboard admin",
+                "offboard-users",
+                "--org",
+                "my-org",
+                "--skip-workspaces",
+            ],
+        )
+
+        with patch(
+            "aieng_platform_onboard.admin.cli.offboard_users_from_org",
+            return_value=0,
+        ) as mock_offboard:
+            main()
+
+        _, kwargs = mock_offboard.call_args
+        assert kwargs["skip_workspaces"] is True
+
+    def test_offboard_users_skip_firestore(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test offboard-users with --skip-firestore flag."""
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "onboard admin",
+                "offboard-users",
+                "--org",
+                "my-org",
+                "--skip-firestore",
+            ],
+        )
+
+        with patch(
+            "aieng_platform_onboard.admin.cli.offboard_users_from_org",
+            return_value=0,
+        ) as mock_offboard:
+            main()
+
+        _, kwargs = mock_offboard.call_args
+        assert kwargs["skip_firestore"] is True
+
+    def test_offboard_users_orphan(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test offboard-users with --orphan flag."""
+        monkeypatch.setattr(
+            "sys.argv",
+            ["onboard admin", "offboard-users", "--org", "my-org", "--orphan"],
+        )
+
+        with patch(
+            "aieng_platform_onboard.admin.cli.offboard_users_from_org",
+            return_value=0,
+        ) as mock_offboard:
+            main()
+
+        _, kwargs = mock_offboard.call_args
+        assert kwargs["orphan"] is True
+
+    def test_offboard_users_no_auto_orphan(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test offboard-users with --no-auto-orphan flag."""
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "onboard admin",
+                "offboard-users",
+                "--org",
+                "my-org",
+                "--no-auto-orphan",
+            ],
+        )
+
+        with patch(
+            "aieng_platform_onboard.admin.cli.offboard_users_from_org",
+            return_value=0,
+        ) as mock_offboard:
+            main()
+
+        _, kwargs = mock_offboard.call_args
+        assert kwargs["auto_orphan_on_failure"] is False
+
+    def test_offboard_users_all_flags(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test offboard-users with all flags combined."""
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "onboard admin",
+                "offboard-users",
+                "--org",
+                "my-org",
+                "--dry-run",
+                "--suspend",
+                "--skip-workspaces",
+                "--skip-firestore",
+                "--orphan",
+                "--no-auto-orphan",
+            ],
+        )
+
+        with patch(
+            "aieng_platform_onboard.admin.cli.offboard_users_from_org",
+            return_value=0,
+        ) as mock_offboard:
+            exit_code = main()
+
+        assert exit_code == 0
+        mock_offboard.assert_called_once_with(
+            org="my-org",
+            suspend=True,
+            skip_workspaces=True,
+            skip_firestore=True,
+            orphan=True,
+            auto_orphan_on_failure=False,
+            dry_run=True,
+        )
+
+    def test_offboard_users_missing_org(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+    ) -> None:
+        """Test offboard-users without required --org argument."""
+        monkeypatch.setattr("sys.argv", ["onboard admin", "offboard-users"])
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 2
+        captured = capsys.readouterr()
+        assert "required" in captured.err.lower()
+
+    def test_offboard_users_error_exit_code(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that function error exit code is propagated."""
+        monkeypatch.setattr(
+            "sys.argv",
+            ["onboard admin", "offboard-users", "--org", "my-org"],
+        )
+
+        with patch(
+            "aieng_platform_onboard.admin.cli.offboard_users_from_org",
+            return_value=1,
+        ):
+            assert main() == 1
+
+    def test_offboard_users_help(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+    ) -> None:
+        """Test offboard-users help message."""
+        monkeypatch.setattr("sys.argv", ["onboard admin", "offboard-users", "--help"])
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "--org" in captured.out
+        assert "--dry-run" in captured.out
+        assert "--suspend" in captured.out
+        assert "--skip-workspaces" in captured.out
+        assert "--skip-firestore" in captured.out
+        assert "--orphan" in captured.out
+        assert "--no-auto-orphan" in captured.out
+
+
 class TestMainEntryPoint:
     """Tests for main entry point behavior."""
 
