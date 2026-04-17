@@ -14,6 +14,7 @@ jobs:
   build-and-publish:
     name: Build and publish Python distribution to PyPI
     runs-on: ubuntu-latest
+    environment: pypi
 
     steps:
       - name: Checkout repository
@@ -50,5 +51,4 @@ jobs:
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
           verbose: true
