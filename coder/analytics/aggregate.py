@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
-Aggregate Coder analytics from all historical GCS snapshots.
+Aggregate Coder analytics from the latest GCS snapshot.
 
 This script:
-1. Reads every snapshot from gs://coder-analytics-snapshots/snapshots/
-2. Builds a deduplicated workspace registry (all workspaces ever seen)
+1. Downloads the latest snapshot from gs://coder-analytics-snapshots/snapshots/
+2. Builds a workspace registry (current workspaces + deleted workspace stubs)
 3. Computes team, platform, template, and daily engagement metrics
 4. Writes a single analytics_aggregate.json to GCS
+
+Each snapshot already carries the full accumulated history (accumulated_usage,
+accumulated_daily_engagement) forward from the previous one, so only the
+latest snapshot is needed.
 
 The dashboard reads analytics_aggregate.json directly — no metric
 computation is done in TypeScript.
@@ -17,7 +21,6 @@ Run after collect.py (or standalone) to refresh the aggregate.
 import json
 import sys
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -60,34 +63,6 @@ def download_snapshot(bucket: Bucket, blob_name: str) -> dict[str, Any] | None:
     except Exception as e:
         console.print(f"  [yellow]⚠ Skipping {blob_name}: {e}[/yellow]")
         return None
-
-
-def download_all_snapshots(
-    bucket: Bucket, blob_names: list[str], max_workers: int = 20
-) -> list[dict[str, Any]]:
-    """Download all snapshots in parallel, return in chronological order."""
-    console.print(
-        f"[cyan]Downloading {len(blob_names)} snapshots ({max_workers} parallel)...[/cyan]"
-    )
-    results: dict[str, dict[str, Any] | None] = {}
-
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        futures = {
-            pool.submit(download_snapshot, bucket, name): name for name in blob_names
-        }
-        for done, future in enumerate(as_completed(futures), start=1):
-            name = futures[future]
-            results[name] = future.result()
-            if done % 50 == 0:
-                console.print(f"  [dim]{done}/{len(blob_names)} downloaded...[/dim]")
-
-    # Return in chronological order (sorted by blob name = sorted by timestamp)
-    ordered: list[dict[str, Any]] = []
-    for name in blob_names:
-        snapshot = results.get(name)
-        if snapshot is not None:
-            ordered.append(snapshot)
-    return ordered
 
 
 # ---------------------------------------------------------------------------
@@ -623,26 +598,31 @@ def _print_summary(
 
 
 def main() -> None:
-    """Aggregate all GCS snapshots and write analytics_aggregate.json."""
+    """Aggregate the latest GCS snapshot and write analytics_aggregate.json."""
     console.print("[bold cyan]" + "=" * 60 + "[/bold cyan]")
     console.print("[bold cyan]Coder Analytics Aggregation Script[/bold cyan]")
     console.print("[bold cyan]" + "=" * 60 + "[/bold cyan]\n")
 
     bucket = get_bucket()
 
-    # 1. List and download all snapshots
+    # 1. Download the latest snapshot only.
+    # Each snapshot accumulates all historical data (accumulated_usage,
+    # accumulated_daily_engagement) from the previous one, so there is no
+    # need to download every past snapshot.
     snapshot_names = list_snapshot_names(bucket)
     console.print(f"[green]✓[/green] Found {len(snapshot_names)} snapshots")
 
-    snapshots = download_all_snapshots(bucket, snapshot_names)
-    console.print(f"[green]✓[/green] Downloaded {len(snapshots)} snapshots\n")
-
-    if not snapshots:
-        console.print("[red]✗ No snapshots downloaded. Exiting.[/red]")
+    if not snapshot_names:
+        console.print("[red]✗ No snapshots found. Exiting.[/red]")
         sys.exit(1)
 
-    # 2. Use the latest snapshot for accumulated data and templates
-    latest = snapshots[-1]
+    latest = download_snapshot(bucket, snapshot_names[-1])
+    if not latest:
+        console.print("[red]✗ Failed to download latest snapshot. Exiting.[/red]")
+        sys.exit(1)
+    console.print("[green]✓[/green] Downloaded latest snapshot\n")
+
+    # 2. Extract accumulated data and templates from the latest snapshot
     accumulated_usage: dict[str, Any] = latest.get("accumulated_usage") or {}
     accumulated_daily_engagement: dict[str, Any] = (
         latest.get("accumulated_daily_engagement") or {}
@@ -656,11 +636,13 @@ def main() -> None:
     )
     console.print(f"  [dim]Templates:[/dim] {len(templates)}\n")
 
-    # 3. Build workspace registry from all snapshots
-    console.print("[cyan]Building workspace registry from all snapshots...[/cyan]")
-    registry = build_workspace_registry(snapshots)
+    # 3. Build workspace registry from the latest snapshot.
+    # Current workspaces are fully represented; deleted workspaces are
+    # recovered via enrich_registry_from_accumulated below.
+    console.print("[cyan]Building workspace registry...[/cyan]")
+    registry = build_workspace_registry([latest])
     console.print(
-        f"[green]✓[/green] Registry: {len(registry)} unique workspaces from snapshots"
+        f"[green]✓[/green] Registry: {len(registry)} unique workspaces from latest snapshot"
     )
 
     # Fill in stubs for workspaces in accumulated_usage not seen in any snapshot
