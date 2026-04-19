@@ -20,7 +20,7 @@ dependencies = [
     "pandas>=2.3.3",
     "urllib3==2.6.3", # Pinning version to address vulnerabilities GHSA-gm62-xv2j-4w53 and GHSA-2xpw-w6gg-jr37
     "filelock==3.20.3",
-    "authlib==1.6.9", # Pinning version to address vulnerabilities CVE-2026-28802, CVE-2026-27962, CVE-2026-28490
+    "authlib==1.6.11", # Pinning version to address vulnerabilities CVE-2026-28802, CVE-2026-27962, CVE-2026-28490
     "pyjwt>=2.12.0", # Pinning version to address vulnerability CVE-2026-32597
     "virtualenv==20.36.1",
     "cryptography>=46.0.7", # Pinning version to address vulnerabilities CVE-2026-26007, CVE-2026-34073, CVE-2026-39892
