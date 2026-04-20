@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@google-cloud/firestore": "^7.10.0",
+    "@google-cloud/firestore": "^8.5.0",
     "@vector-institute/aieng-auth-core": "^0.1.2",
     "iron-session": "^8.0.4",
     "next": "15.5.15",
