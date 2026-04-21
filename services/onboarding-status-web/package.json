@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -p ${PORT:-8080}",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@google-cloud/firestore": "^8.5.0",
