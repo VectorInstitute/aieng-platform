@@ -101,6 +101,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
   }, [roleFilter]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
 
     // Auto-refresh every 30 seconds
